@@ -1,4 +1,5 @@
 CC = gcc 
+
 CFLAGS = -Wall -g 
 
 all: parser.o
