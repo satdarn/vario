@@ -59,6 +59,7 @@ primitive_type = "u8" | "u32" | "u64"
 
 pointer_type = "*" type ;
 slice_type = "[" [ integer_literal ] "]" type ;  (* []T or [N]T *)
+
 obj_type = identifier ;      (* reference to defined obj *)
 enum_type = identifier ;      (* reference to defined enum *)
 union_type = identifier ;      (* reference to defined union *)
@@ -75,7 +76,7 @@ obj_member = field_decl
            ;
 
 field_decl = visibility var_decl ";" ;
-method_decl = visibility "fn" identifier "(" self_param "," parameter_list ")" return_type block ;
+method_decl = visibility "fn" identifier "(" [ self_param "," ]  "," parameter_list ")" return_type block ;
 self_param = "self" ":" "*" obj_type ;  (* self is always a pointer *)
 constructor_decl = "fn" "init" "(" parameter_list ")" "->" obj_type block ;
 destructor_decl = "fn" "deinit" "(" "self" ":" "*" obj_type ")" block ;
