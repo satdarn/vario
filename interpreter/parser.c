@@ -1023,19 +1023,32 @@ Node *parse_assignment_stmt(Tokens *tokens) {
 	size_t start_pos = tokens->position;
 	Node *left_expression = parse_expression(tokens);
 	if (!left_expression) {
+		tokens->position = start_pos;
+		return NULL;
 	}
 	Node *assignment = parse_assignment_stmt(tokens);
 	if (!assignment) {
+		tokens->position = start_pos;
+		destroy_node(left_expression);
+		return NULL;
 	}
 	Node *right_expression = parse_expression(tokens);
 	if (!right_expression) {
+		tokens->position = start_pos;
+		destroy_node(left_expression);
+		destroy_node(assignment);
+		return NULL;
 	}
 	if (!consume_if(tokens, ';')) {
 		tokens->position = start_pos;
+		destroy_node(left_expression);
+		destroy_node(assignment);
+		destroy_node(right_expression);
 		return NULL;
 	}
 	Node *curr = create_node(NODE_ASSIGNMENT_STMT, "");
 	append_child(curr, left_expression);
 	append_child(curr, assignment);
 	append_child(curr, right_expression);
+	return curr;
 }
