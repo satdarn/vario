@@ -27,7 +27,7 @@ typedef enum {
 	NODE_METHOD_DECL,
 	NODE_SELF_PARAM,
 	NODE_CONSTRUCTOR_DECL,
-	NODE_DECONSTRUCTOR_DECL,
+	NODE_DESTRUCTOR_DECL,
 	NODE_ENUM_DECL,
 	NODE_ENUM_VARIANT,
 	NODE_UNION_DECL,
@@ -63,8 +63,14 @@ typedef enum {
 	NODE_RELATIONAL_EXPRESSION,
 	NODE_ADDITIVE_EXPRESSION,
 	NODE_MULTIPLICTIVE_EXPRESSION,
-
-
+	NODE_UNARY_EXPRESSION,
+	NODE_FUNC_CALL,
+	NODE_ACCESS,
+	NODE_INDEX,
+	NODE_INC_DEC,
+	NODE_SIZE_OF_EXPRESSION,
+	NODE_CAST_EXPRESSION,
+	NODE_GROUPED_EXPRESSION,
 } NodeType;
 
 typedef union {
@@ -82,6 +88,35 @@ typedef union {
 		usize,
 		isize,
 	} primitive_type;
+	enum {
+		equals,
+		plus_equals,
+		minus_equals,
+		star_equals,
+		slash_equals,
+		percent_equals,
+		and_equals,
+		or_equals,
+		xor_equals,
+		lshift_equals,
+		rshift_equals,
+		eq_equals,
+		not_equals,
+		less_than,
+		less_than_eq,
+		greater_than,
+		greater_than_eq,
+		plus,
+		minus,
+		star,
+		slash,
+		percent,
+		log_not,
+		bit_not,
+		and_perc,
+		plus_plus,
+		minus_minus,
+	} op;
 } NodeData;
 
 typedef struct Node {
