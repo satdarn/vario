@@ -1,4 +1,4 @@
-(* 
+(*! !
    Vario Language Grammar
 *)
 
@@ -147,7 +147,7 @@ loop_stmt = while_loop | for_loop | range_for_loop ;
 
 while_loop = "while" expression block ;
 
-for_loop = "for" for_init? ";" expression? ";" for_update? block ;
+for_loop = "for" for_init ";" expression ";" for_update block ;
 for_init = var_decl | assignment_stmt | expression_stmt ;
 for_update = assignment_stmt | expression_stmt | expression ;  (* no trailing semicolon *)
 
@@ -158,9 +158,9 @@ range_for_loop = "for" identifier ":" expression block ;  (* expression must be 
 (* ============================================================ *)
 
 switch_stmt = "switch" expression "{" { switch_case } [ switch_default ] "}" ;
-switch_case = "case" case_pattern { "," case_pattern } ":" { statement } ;
+switch_case = "case" case_pattern { "," case_pattern } ":" block ;
 case_pattern = expression | literal | identifier ;  (* identifier as catch-all *)
-switch_default = "default" ":" { statement } ;
+switch_default = "default" ":" block ;
 
 (* ============================================================ *)
 (* EXPRESSIONS (with precedence levels)                         *)
