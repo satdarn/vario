@@ -1,4 +1,10 @@
 (*! !
+//comment = "//" { ? any character except newline ? } newline
+//        | "/*" { ? any character ? } "*/"
+//        ;
+Node *parse_comment(Tokens *tokens) {
+	size_t start_pos = tokens->position;
+}
    Vario Language Grammar
 *)
 
