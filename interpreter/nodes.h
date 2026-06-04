@@ -83,55 +83,59 @@ typedef enum {
 	NODE_BINARY_LITERAL,
 	NODE_DECIMAL_DIGIT,
 } NodeType;
+typedef enum {
+	equals,
+	plus_equals,
+	minus_equals,
+	star_equals,
+	slash_equals,
+	percent_equals,
+	and_equals,
+	or_equals,
+	xor_equals,
+	lshift_equals,
+	rshift_equals,
+	eq_equals,
+	not_equals,
+	less_than,
+	less_than_eq,
+	greater_than,
+	greater_than_eq,
+	plus,
+	minus,
+	star,
+	slash,
+	percent,
+	log_not,
+	log_and,
+	log_or,
+	bit_not,
+	and_perc,
+	plus_plus,
+	minus_minus,
+} Op;
 
+typedef enum {
+	u8,
+	u32,
+	u64,
+	i32,
+	i64,
+	f32,
+	f64,
+	boolean,
+	voidian,
+	usize,
+	isize,
+} PrimitiveType;
 typedef union {
 	bool visiblity;
 	struct {
 		size_t start;
 		size_t end;
 	} literal;
-	enum {
-		u8,
-		u32,
-		u64,
-		i32,
-		i64,
-		f32,
-		f64,
-		boolean,
-		voidian,
-		usize,
-		isize,
-	} primitive_type;
-	enum {
-		equals,
-		plus_equals,
-		minus_equals,
-		star_equals,
-		slash_equals,
-		percent_equals,
-		and_equals,
-		or_equals,
-		xor_equals,
-		lshift_equals,
-		rshift_equals,
-		eq_equals,
-		not_equals,
-		less_than,
-		less_than_eq,
-		greater_than,
-		greater_than_eq,
-		plus,
-		minus,
-		star,
-		slash,
-		percent,
-		log_not,
-		bit_not,
-		and_perc,
-		plus_plus,
-		minus_minus,
-	} op;
+	Op op;
+	PrimitiveType primitive_type;
 } NodeData;
 
 typedef struct Node {
@@ -147,50 +151,60 @@ typedef struct Node {
 } Node;
 
 static void destroy_node(Node *node) {
-	if (node == NULL)
-		return;
-	Node *curr = node->first_child;
-	while (curr->next_sibling != NULL) {
-		curr = curr->next_sibling;
-		destroy_node(curr->last_sibling);
-	}
-	destroy_node(curr);
-	if (node->next_sibling)
-		node->next_sibling->last_sibling = node->last_sibling;
-	if (node->last_sibling)
-		node->last_sibling->next_sibling = node->next_sibling;
-	free(node);
-}
-static void append_child(Node *parent, Node *child) {
-	if (parent != NULL && child != NULL) {
-		child->parent = parent;
-		child->last_sibling = NULL;
-		child->next_sibling = NULL;
-		if (parent->first_child == NULL) {
-			parent->first_child = child;
-		} else {
-			Node *curr = parent->first_child;
-			while (curr->next_sibling != NULL) {
-				curr = curr->next_sibling;
-			}
-			curr->next_sibling = child;
-			child->last_sibling = curr;
-		}
-	}
+    if (node == NULL)
+        return;
+
+    Node *curr = node->first_child;
+    while (curr != NULL) {
+        Node *next = curr->next_sibling;
+        destroy_node(curr);
+        curr = next;
+    }
+
+    // 2. Clear our own string memory if allocated (Optional, depends on how node->name is assigned)
+    // if (node->name != NULL) { free(node->name); }
+
+    // 3. Nullify pointers for safety before freeing
+    node->first_child = NULL;
+    node->next_sibling = NULL;
+    node->last_sibling = NULL;
+    node->parent = NULL;
+
+    free(node);
 }
 
+static void append_child(Node *parent, Node *child) {
+    if (parent == NULL || child == NULL) 
+        return;
+    child->parent = parent;
+    child->next_sibling = NULL;
+    if (parent->first_child == NULL) {
+        parent->first_child = child;
+        child->last_sibling = child; 
+    } else {
+        Node *tail = parent->first_child->last_sibling;
+        tail->next_sibling = child;
+        child->last_sibling = tail;
+        parent->first_child->last_sibling = child;
+    }
+}
+
+
 static Node *create_node(NodeType node_type, char *node_name) {
-	Node *node = (Node *)malloc(sizeof(Node));
-	if (node != NULL) {
-		node->type = (node_type);
-		node->name = (node_name);
-		node->first_child = NULL;
-		node->next_sibling = NULL;
-		node->parent = NULL;
-		node->line = 0;
-		node->col = 0;
-		memset(&node->data, 0, sizeof(NodeData));
-	}
-	return node;
+    Node *node = (Node *)malloc(sizeof(Node));
+    if (node == NULL) {
+        perror("Failed to allocate AST Node");
+        return NULL;
+    }
+    node->type = node_type;
+    node->name = node_name;
+    node->first_child = NULL;
+    node->next_sibling = NULL;
+    node->last_sibling = NULL;
+    node->parent = NULL;
+    node->line = 0;
+    node->col = 0;
+    memset(&node->data, 0, sizeof(NodeData));
+    return node;
 }
 #endif

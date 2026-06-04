@@ -1,9 +1,6 @@
 #include "parser.h"
 #include "nodes.h"
 
-int main() {
-	return 0;
-}
 Node *parse(char *data) {
 	Tokens tokens = { 0 };
 	tokens.data = data;
@@ -88,14 +85,14 @@ Node *parse_import_decl(Tokens *tokens) {
 		tokens->position = start_pos;
 		return NULL;
 	}
-	if (peek_keyword(tokens, "as")) {
-		consume_string(tokens, "as");
-	}
 	Node *curr = create_node(NODE_IMPORT_DECL, "");
 	append_child(curr, identifier);
-	Node *alias = parse_identifier(tokens);
-	if (alias) {
-		append_child(curr, alias);
+	if (peek_keyword(tokens, "as")) {
+		consume_string(tokens, "as");
+		Node *alias = parse_identifier(tokens);
+		if (alias) {
+			append_child(curr, alias);
+		}
 	}
 	if (!consume_if(tokens, ';')) {
 		tokens->position = start_pos;
@@ -171,7 +168,6 @@ Node *parse_func_decl(Tokens *tokens) {
 }
 
 Node *parse_parameter_list(Tokens *tokens) {
-	size_t start_pos = tokens->position;
 	Node *curr = create_node(NODE_PARAMETER_LIST, "");
 	Node *node = parse_parameter(tokens);
 	while (node) {
@@ -186,8 +182,9 @@ Node *parse_parameter_list(Tokens *tokens) {
 Node *parse_parameter(Tokens *tokens) {
 	size_t start_pos = tokens->position;
 	Node *identifier = parse_identifier(tokens);
-	if (!identifier)
+	if (!identifier) {
 		return NULL;
+	}
 	if (!consume_if(tokens, ':')) {
 		tokens->position = start_pos;
 		destroy_node(identifier);
@@ -214,9 +211,11 @@ Node *parse_return_type(Tokens *tokens) {
 	Node *type = parse_type(tokens);
 	if (!type) {
 		tokens->position = start_pos;
+		return NULL;
 	}
-	type->type = NODE_RETURN_TYPE;
-	return type;
+	Node *curr = create_node(NODE_RETURN_TYPE, "");
+	append_child(curr, type);
+	return curr;
 }
 
 Node *parse_block(Tokens *tokens) {
@@ -309,9 +308,9 @@ Node *parse_primitive_type(Tokens *tokens) {
 		curr->data.primitive_type = f32;
 		return curr;
 	}
-	if (peek_keyword(tokens, "f32")) {
-		consume_string(tokens, "f32");
-		curr->data.primitive_type = f32;
+	if (peek_keyword(tokens, "f64")) {
+		consume_string(tokens, "f64");
+		curr->data.primitive_type = f64;
 		return curr;
 	}
 	if (peek_keyword(tokens, "bool")) {
@@ -358,16 +357,20 @@ Node *parse_slice_type(Tokens *tokens) {
 		return NULL;
 	}
 	Node *integer = parse_integer_literal(tokens);
+
 	if (!consume_if(tokens, ']')) {
 		tokens->position = start_pos;
+		destroy_node(integer);
 		return NULL;
 	}
+
 	Node *type = parse_type(tokens);
 	if (!type) {
 		tokens->position = start_pos;
 		destroy_node(integer);
 		return NULL;
 	}
+
 	Node *curr = create_node(NODE_SLICE_TYPE, "");
 	append_child(curr, type);
 	append_child(curr, integer);
@@ -415,6 +418,7 @@ Node *parse_obj_decl(Tokens *tokens) {
 		destroy_node(visibility);
 		return NULL;
 	}
+
 	consume_string(tokens, "obj");
 	Node *identifier = parse_identifier(tokens);
 	if (!identifier) {
@@ -422,6 +426,7 @@ Node *parse_obj_decl(Tokens *tokens) {
 		destroy_node(visibility);
 		return NULL;
 	}
+
 	if (!consume_if(tokens, '{')) {
 		tokens->position = start_pos;
 		destroy_node(visibility);
@@ -429,19 +434,14 @@ Node *parse_obj_decl(Tokens *tokens) {
 		return NULL;
 	}
 	Node *curr = create_node(NODE_OBJ_DECL, "");
+	append_child(curr, visibility);
+	append_child(curr, identifier);
 	Node *node = parse_obj_member(tokens);
 	while (node) {
 		append_child(curr, node);
 		node = parse_obj_member(tokens);
 	}
 	if (!consume_if(tokens, '}')) {
-		tokens->position = start_pos;
-		destroy_node(visibility);
-		destroy_node(identifier);
-		destroy_node(curr);
-		return NULL;
-	}
-	if (!consume_if(tokens, ';')) {
 		tokens->position = start_pos;
 		destroy_node(visibility);
 		destroy_node(identifier);
@@ -457,19 +457,19 @@ Node *parse_obj_member(Tokens *tokens) {
 	if (curr)
 		return curr;
 	tokens->position = start_pos;
-	curr = parse_constructor_decl(tokens);
-	if (curr)
-		return curr;
-	tokens->position = start_pos;
-	curr = parse_destructor_decl(tokens);
-	if (curr)
-		return curr;
-	tokens->position = start_pos;
 	curr = parse_method_decl(tokens);
 	if (curr)
 		return curr;
 	tokens->position = start_pos;
 	return NULL;
+	//  constructors and destructors are not syntaxically different from methods, no distinction need now
+	//	curr = parse_constructor_decl(tokens);
+	//	if (curr)
+	//		return curr;
+	//	tokens->position = start_pos;
+	//	curr = parse_destructor_decl(tokens);
+	//	if (curr)
+	//		return curr;
 }
 
 Node *parse_field_decl(Tokens *tokens) {
@@ -622,6 +622,7 @@ Node *parse_constructor_decl(Tokens *tokens) {
 		destroy_node(parameter_list);
 		return NULL;
 	}
+	parse_return_type(tokens);
 	Node *block = parse_block(tokens);
 	if (!block) {
 		tokens->position = start_pos;
@@ -664,6 +665,8 @@ Node *parse_destructor_decl(Tokens *tokens) {
 		destroy_node(self_param);
 		return NULL;
 	}
+
+	parse_return_type(tokens);
 	Node *block = parse_block(tokens);
 	if (!block) {
 		tokens->position = start_pos;
@@ -884,30 +887,19 @@ Node *parse_var_decl(Tokens *tokens) {
 		destroy_node(identifier);
 		return NULL;
 	}
-	if (!consume_if(tokens, '=')) {
-		tokens->position = start_pos;
-		destroy_node(identifier);
-		destroy_node(type);
-		return NULL;
-	}
-	Node *expression = parse_expression(tokens);
-	if (!expression) {
-		tokens->position = start_pos;
-		destroy_node(identifier);
-		destroy_node(type);
-		return NULL;
-	}
-	if (!consume_if(tokens, ';')) {
-		tokens->position = start_pos;
-		destroy_node(identifier);
-		destroy_node(type);
-		destroy_node(expression);
-		return NULL;
-	}
 	Node *curr = create_node(NODE_VAR_DECL, "");
 	append_child(curr, identifier);
 	append_child(curr, type);
-	append_child(curr, expression);
+	if (consume_if(tokens, '=')) {
+		Node *expression = parse_expression(tokens);
+		if (!expression) {
+			tokens->position = start_pos;
+			destroy_node(identifier);
+			destroy_node(type);
+			return NULL;
+		}
+		append_child(curr, expression);
+	}
 	return curr;
 }
 Node *parse_let_decl(Tokens *tokens) {
@@ -944,13 +936,6 @@ Node *parse_let_decl(Tokens *tokens) {
 		tokens->position = start_pos;
 		destroy_node(identifier);
 		destroy_node(type);
-		return NULL;
-	}
-	if (!consume_if(tokens, ';')) {
-		tokens->position = start_pos;
-		destroy_node(identifier);
-		destroy_node(type);
-		destroy_node(expression);
 		return NULL;
 	}
 	Node *curr = create_node(NODE_LET_DECL, "");
@@ -1020,10 +1005,29 @@ Node *parse_declaration_stmt(Tokens *tokens) {
 		tokens->position = start_pos;
 		return NULL;
 	}
+	if (!consume_if(tokens, ';')) {
+		tokens->position = start_pos;
+		destroy_node(curr);
+		return NULL;
+	}
 	return curr;
 }
 
 Node *parse_assignment_stmt(Tokens *tokens) {
+	size_t start_pos = tokens->position;
+	Node *curr = parse_assignment(tokens);
+	if (!curr) {
+		tokens->position = start_pos;
+		return NULL;
+	}
+	if (!consume_if(tokens, ';')) {
+		tokens->position = start_pos;
+		destroy_node(curr);
+		return NULL;
+	}
+	return curr;
+}
+Node *parse_assignment(Tokens *tokens) {
 	size_t start_pos = tokens->position;
 	Node *left_expression = parse_expression(tokens);
 	if (!left_expression) {
@@ -1041,13 +1045,6 @@ Node *parse_assignment_stmt(Tokens *tokens) {
 		tokens->position = start_pos;
 		destroy_node(left_expression);
 		destroy_node(assignment);
-		return NULL;
-	}
-	if (!consume_if(tokens, ';')) {
-		tokens->position = start_pos;
-		destroy_node(left_expression);
-		destroy_node(assignment);
-		destroy_node(right_expression);
 		return NULL;
 	}
 	Node *curr = create_node(NODE_ASSIGNMENT_STMT, "");
@@ -1285,32 +1282,43 @@ Node *parse_while_loop(Tokens *tokens) {
 
 Node *parse_for_loop(Tokens *tokens) {
 	size_t start_pos = tokens->position;
+
 	if (!peek_keyword(tokens, "for")) {
+		tokens->position = start_pos;
 		return NULL;
 	}
 	consume_string(tokens, "for");
+	if (!consume_if(tokens, '(')) {
+		tokens->position = start_pos;
+		return NULL;
+	}
 	Node *for_init = parse_for_init(tokens);
+
 	if (!for_init) {
 		tokens->position = start_pos;
 		return NULL;
 	}
+
 	if (!consume_if(tokens, ';')) {
 		tokens->position = start_pos;
 		destroy_node(for_init);
 		return NULL;
 	}
 	Node *expression = parse_expression(tokens);
+
 	if (!expression) {
 		tokens->position = start_pos;
 		destroy_node(for_init);
 		return NULL;
 	}
+
 	if (!consume_if(tokens, ';')) {
 		tokens->position = start_pos;
 		destroy_node(for_init);
 		destroy_node(expression);
 		return NULL;
 	}
+
 	Node *for_update = parse_for_update(tokens);
 	if (!for_update) {
 		tokens->position = start_pos;
@@ -1318,7 +1326,15 @@ Node *parse_for_loop(Tokens *tokens) {
 		destroy_node(expression);
 		return NULL;
 	}
+	if (!consume_if(tokens, ')')) {
+		tokens->position = start_pos;
+		destroy_node(for_init);
+		destroy_node(expression);
+		destroy_node(for_update);
+		return NULL;
+	}
 	Node *block = parse_block(tokens);
+
 	if (!block) {
 		tokens->position = start_pos;
 		destroy_node(for_init);
@@ -1355,21 +1371,16 @@ Node *parse_for_init(Tokens *tokens) {
 		return curr;
 	}
 	tokens->position = start_pos;
+	destroy_node(curr);
 	return NULL;
 }
 
 Node *parse_for_update(Tokens *tokens) {
 	size_t start_pos = tokens->position;
 	Node *curr = create_node(NODE_FOR_UPDATE, "");
-	Node *assignment_stmt = parse_assignment_stmt(tokens);
+	Node *assignment_stmt = parse_assignment(tokens);
 	if (assignment_stmt) {
 		append_child(curr, assignment_stmt);
-		return curr;
-	}
-	tokens->position = start_pos;
-	Node *expression_stmt = parse_expression_stmt(tokens);
-	if (expression_stmt) {
-		append_child(curr, expression_stmt);
 		return curr;
 	}
 	tokens->position = start_pos;
@@ -1379,6 +1390,7 @@ Node *parse_for_update(Tokens *tokens) {
 		return curr;
 	}
 	tokens->position = start_pos;
+	destroy_node(curr);
 	return NULL;
 }
 
@@ -1391,6 +1403,7 @@ Node *parse_range_for_loop(Tokens *tokens) {
 	Node *identifier = parse_identifier(tokens);
 	if (!identifier) {
 		tokens->position = start_pos;
+		return NULL;
 	}
 	if (!consume_if(tokens, ':')) {
 		tokens->position = start_pos;
@@ -1494,12 +1507,12 @@ Node *parse_case_pattern(Tokens *tokens) {
 		return expression;
 	}
 	tokens->position = start_pos;
-	Node *literal = parse_expression(tokens);
+	Node *literal = parse_literal(tokens);
 	if (literal) {
 		return literal;
 	}
 	tokens->position = start_pos;
-	Node *identifier = parse_expression(tokens);
+	Node *identifier = parse_identifier(tokens);
 	if (identifier) {
 		return identifier;
 	}
@@ -1627,18 +1640,18 @@ Node *parse_relational_expression(Tokens *tokens) {
 	}
 	while (peek_string(tokens, "<") || peek_string(tokens, "<=") || peek_string(tokens, ">") || peek_string(tokens, ">=")) {
 		Node *curr = create_node(NODE_RELATIONAL_EXPRESSION, "");
-		if (peek_string(tokens, "<")) {
-			consume_string(tokens, "<");
-			curr->data.op = less_than;
-		} else if (peek_string(tokens, "<=")) {
+		if (peek_string(tokens, "<=")) {
 			consume_string(tokens, "<=");
 			curr->data.op = less_than_eq;
-		} else if (peek_string(tokens, ">")) {
-			consume_string(tokens, ">");
-			curr->data.op = greater_than;
 		} else if (peek_string(tokens, ">=")) {
 			consume_string(tokens, ">=");
 			curr->data.op = greater_than_eq;
+		} else if (peek_string(tokens, "<")) {
+			consume_string(tokens, "<");
+			curr->data.op = less_than;
+		} else if (peek_string(tokens, ">")) {
+			consume_string(tokens, ">");
+			curr->data.op = greater_than;
 		}
 		Node *right = parse_additive_expression(tokens);
 		if (!right) {
@@ -1816,14 +1829,16 @@ Node *parse_postfix_expression(Tokens *tokens) {
 			consume_string(tokens, "++");
 			Node *curr = create_node(NODE_INC_DEC, "");
 			curr->data.op = plus_plus;
-			append_child(left, curr);
+			append_child(curr, left);
+			left = curr;
 			continue;
 		}
 		if (peek_string(tokens, "--")) {
 			consume_string(tokens, "--");
 			Node *curr = create_node(NODE_INC_DEC, "");
 			curr->data.op = minus_minus;
-			append_child(left, curr);
+			append_child(curr, left);
+			left = curr;
 			continue;
 		}
 		break;
@@ -1895,6 +1910,7 @@ Node *parse_primary_expression(Tokens *tokens) {
 		append_child(group, expr);
 		return group;
 	}
+	destroy_node(curr);
 	return NULL;
 }
 
@@ -1945,7 +1961,7 @@ Node *parse_literal(Tokens *tokens) {
 //integer_literal = decimal_literal | hex_literal | octal_literal | binary_literal ;
 Node *parse_integer_literal(Tokens *tokens) {
 	size_t start_pos = tokens->position;
-	Node *curr = parse_decimal_literal(tokens);
+	Node *curr = parse_binary_literal(tokens);
 	if (curr)
 		return curr;
 	tokens->position = start_pos;
@@ -1957,7 +1973,7 @@ Node *parse_integer_literal(Tokens *tokens) {
 	if (curr)
 		return curr;
 	tokens->position = start_pos;
-	curr = parse_binary_literal(tokens);
+	curr = parse_decimal_literal(tokens);
 	if (curr)
 		return curr;
 	tokens->position = start_pos;
@@ -2007,12 +2023,11 @@ Node *parse_string_literal(Tokens *tokens) {
 		tokens->position = start_pos;
 		return NULL;
 	}
-	while (peek_raw(tokens) != '"') {
-		if (isspace(peek_raw(tokens))) {
-			consume_raw(tokens);
-		}
+	while (peek_raw(tokens) != '"' && peek_raw(tokens) != '\0') {
 		if (peek_raw(tokens) == '\\') {
 			consume_raw(tokens);
+			if (peek_raw(tokens) == '\0')
+				break;
 		}
 		consume_raw(tokens);
 	}
@@ -2029,8 +2044,10 @@ Node *parse_string_literal(Tokens *tokens) {
 Node *parse_boolean_literal(Tokens *tokens) {
 	size_t start_pos = tokens->position;
 	if (peek_keyword(tokens, "true")) {
+		start_pos = tokens->position;
 		consume_string(tokens, "true");
 	} else if (peek_keyword(tokens, "false")) {
+		start_pos = tokens->position;
 		consume_string(tokens, "false");
 	} else {
 		return NULL;
@@ -2067,16 +2084,17 @@ Node *parse_array_literal(Tokens *tokens) {
 
 //identifier = letter { letter | digit | "_" } ;
 Node *parse_identifier(Tokens *tokens) {
-	size_t start_pos = tokens->position;
 	if (!isalpha(peek(tokens))) {
 		return NULL;
 	}
-	while (isalnum(peek(tokens)) || peek(tokens) == '_') {
-		consume(tokens);
+	size_t start_pos = tokens->position;
+	size_t size = 0;
+	for (; isalnum(peek_raw(tokens)) || peek_raw(tokens) == '_'; size++) {
+		consume_raw(tokens);
 	}
 	Node *curr = create_node(NODE_IDENTIFER, "");
 	curr->data.literal.start = start_pos;
-	curr->data.literal.end = tokens->position;
+	curr->data.literal.end = start_pos + size;
 	return curr;
 }
 
@@ -2094,13 +2112,13 @@ Node *parse_decimal_literal(Tokens *tokens) {
 
 //hex_literal = "0x" hex_digits ;
 Node *parse_hex_literal(Tokens *tokens) {
-	size_t start_pos = tokens->position;
 	if (!peek_string(tokens, "0x")) {
 		return NULL;
 	}
+	size_t start_pos = tokens->position;
 	consume_string(tokens, "0x");
-	while (isxdigit(peek(tokens))) {
-		consume(tokens);
+	while (isxdigit(peek_raw(tokens))) {
+		consume_raw(tokens);
 	}
 	Node *curr = create_node(NODE_HEX_LITERAL, "");
 	curr->data.literal.start = start_pos;
@@ -2110,13 +2128,13 @@ Node *parse_hex_literal(Tokens *tokens) {
 
 //octal_literal = "0o" octal_digits ;
 Node *parse_octal_literal(Tokens *tokens) {
-	size_t start_pos = tokens->position;
 	if (!peek_string(tokens, "0o")) {
 		return NULL;
 	}
+	size_t start_pos = tokens->position;
 	consume_string(tokens, "0o");
-	while (peek(tokens) >= '0' && peek(tokens) <= '7') {
-		consume(tokens);
+	while (peek_raw(tokens) >= '0' && peek_raw(tokens) <= '7') {
+		consume_raw(tokens);
 	}
 	Node *curr = create_node(NODE_OCTAL_LITERAL, "");
 	curr->data.literal.start = start_pos;
@@ -2126,13 +2144,13 @@ Node *parse_octal_literal(Tokens *tokens) {
 
 //binary_literal = "0b" binary_digits ;
 Node *parse_binary_literal(Tokens *tokens) {
-	size_t start_pos = tokens->position;
 	if (!peek_string(tokens, "0b")) {
 		return NULL;
 	}
+	size_t start_pos = tokens->position;
 	consume_string(tokens, "0b");
-	while (peek(tokens) == '1' || peek(tokens) == '0') {
-		consume(tokens);
+	while (peek_raw(tokens) == '1' || peek_raw(tokens) == '0') {
+		consume_raw(tokens);
 	}
 	Node *curr = create_node(NODE_BINARY_LITERAL, "");
 	curr->data.literal.start = start_pos;
@@ -2142,12 +2160,12 @@ Node *parse_binary_literal(Tokens *tokens) {
 
 //decimal_digits = digit { digit } ;
 Node *parse_decimal_digits(Tokens *tokens) {
-	size_t start_pos = tokens->position;
 	if (!isdigit(peek(tokens))) {
 		return NULL;
 	}
-	while (isdigit(peek(tokens))) {
-		consume(tokens);
+	size_t start_pos = tokens->position;
+	while (isdigit(peek_raw(tokens))) {
+		consume_raw(tokens);
 	}
 	Node *curr = create_node(NODE_DECIMAL_DIGIT, "");
 	curr->data.literal.start = start_pos;

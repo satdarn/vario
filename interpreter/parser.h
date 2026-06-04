@@ -12,9 +12,43 @@ typedef struct {
 	size_t size;
 	size_t position;
 } Tokens;
+
+static inline void token_dump(Tokens *tokens) {
+	printf("====================\n\n");
+	printf("%s\n", tokens->data+ tokens->position);
+	printf("====================\n\n");
+}
+
 static inline void skip_whitespace(Tokens *tokens) {
-	while (tokens->position < tokens->size && isspace(tokens->data[tokens->position]))
-		tokens->position++;
+	while (tokens->position < tokens->size) {
+        char c = tokens->data[tokens->position];
+        if (isspace(c)) {
+            tokens->position++;
+            continue;
+        }
+        if (c == '/' && tokens->position + 1 < tokens->size
+                     && tokens->data[tokens->position + 1] == '/') {
+            tokens->position += 2;
+            while (tokens->position < tokens->size
+                   && tokens->data[tokens->position] != '\n')
+                tokens->position++;
+            continue;
+        }
+        if (c == '/' && tokens->position + 1 < tokens->size
+                     && tokens->data[tokens->position + 1] == '*') {
+            tokens->position += 2;
+            while (tokens->position + 1 < tokens->size) {
+                if (tokens->data[tokens->position]     == '*'
+                 && tokens->data[tokens->position + 1] == '/') {
+                    tokens->position += 2;
+                    break;
+                }
+                tokens->position++;
+            }
+            continue;
+        }
+        break;
+    }
 }
 
 static inline char peek_raw(Tokens *tokens) {
@@ -72,7 +106,7 @@ static inline bool peek_keyword(Tokens *tokens, const char *s) {
 	char after = (tokens->position + len < tokens->size) ? tokens->data[tokens->position + len] : '\0';
 	return !isalnum(after) && after != '_';
 }
-
+Node *parse(char* data);
 Node *parse_program(Tokens *tokens);
 Node *parse_top_level_decl(Tokens *tokens);
 Node *parse_module_decl(Tokens *tokens);
@@ -106,6 +140,7 @@ Node *parse_var_decl(Tokens *tokens);
 Node *parse_let_decl(Tokens *tokens);
 Node *parse_statement(Tokens *tokens);
 Node *parse_declaration_stmt(Tokens *tokens);
+Node *parse_assignment(Tokens *tokens);
 Node *parse_assignment_stmt(Tokens *tokens);
 Node *parse_assignment_operator(Tokens *tokens);
 Node *parse_expression_stmt(Tokens *tokens);
