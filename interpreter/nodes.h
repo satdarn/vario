@@ -124,6 +124,7 @@ typedef enum {
 	usize,
 	isize,
 } PrimitiveType;
+
 typedef union {
 	bool visiblity;
 	struct {
@@ -135,72 +136,61 @@ typedef union {
 } NodeData;
 
 typedef struct Node {
-	NodeType type;
 	char *name;
+	NodeType type;
 	NodeData data;
 	struct Node *first_child;
-	struct Node *last_sibling;
+	struct Node *last_child;
 	struct Node *next_sibling;
+	struct Node *prev_sibling;
 	struct Node *parent;
+	size_t number_of_children;
 	int line;
 	int col;
+	void *resolved_type;
 } Node;
 
-static void destroy_node(Node *node) {
-    if (node == NULL)
-        return;
-
-    Node *curr = node->first_child;
-    while (curr != NULL) {
-        Node *next = curr->next_sibling;
-        destroy_node(curr);
-        curr = next;
-    }
-
-    // 2. Clear our own string memory if allocated (Optional, depends on how node->name is assigned)
-    // if (node->name != NULL) { free(node->name); }
-
-    // 3. Nullify pointers for safety before freeing
-    node->first_child = NULL;
-    node->next_sibling = NULL;
-    node->last_sibling = NULL;
-    node->parent = NULL;
-
-    free(node);
-}
-
-static void append_child(Node *parent, Node *child) {
-    if (parent == NULL || child == NULL) 
-        return;
-    child->parent = parent;
-    child->next_sibling = NULL;
-    if (parent->first_child == NULL) {
-        parent->first_child = child;
-        child->last_sibling = child; 
-    } else {
-        Node *tail = parent->first_child->last_sibling;
-        tail->next_sibling = child;
-        child->last_sibling = tail;
-        parent->first_child->last_sibling = child;
-    }
-}
-
-
-static Node *create_node(NodeType node_type, char *node_name) {
-    Node *node = (Node *)malloc(sizeof(Node));
-    if (node == NULL) {
-        perror("Failed to allocate AST Node");
-        return NULL;
-    }
-    node->type = node_type;
-    node->name = node_name;
-    node->first_child = NULL;
-    node->next_sibling = NULL;
-    node->last_sibling = NULL;
-    node->parent = NULL;
-    node->line = 0;
-    node->col = 0;
-    memset(&node->data, 0, sizeof(NodeData));
-    return node;
-}
+typedef struct {
+	Node *parent;
+	Node *current;
+	Node *first_child;
+	Node *last_child;
+	size_t current_child_index;
+} NodeChildIter;
+void destroy_node(Node *node);
+void append_child(Node *parent, Node *child);
+Node *create_node(NodeType node_type, char *node_name);
+NodeChildIter *create_child_iter(Node *parent);
+Node *start_iter(NodeChildIter *iter);
+Node *end_iter(NodeChildIter *iter);
+Node *next_iter(NodeChildIter *iter);
+Node *prev_iter(NodeChildIter *iter);
+Node *get_first_child_of_type(Node *parent, NodeType type);
+Node *get_last_child_of_type(Node *parent, NodeType type);
+Node *get_next_sibling_of_type(Node *node, NodeType type);
+Node *get_prev_sibling_of_type(Node *node, NodeType type);
+Node *get_first_child_by_name(Node *parent, const char *name);
+Node *get_next_sibling_by_name(Node *node, const char *name);
+Node *get_first_descendant_of_type(Node *root, NodeType type);
+Node *get_first_child_where(Node *parent, bool (*predicate)(Node *));
+Node *get_next_sibling_where(Node *node, bool (*predicate)(Node *));
+Node *get_parent_of_type(Node *node, NodeType type);
+bool has_child_of_type(Node *parent, NodeType type);
+int count_children_of_type(Node *parent, NodeType type);
+Node *get_child_at_index(Node *parent, size_t index);
+Node *find_first_in_subtree(Node *root, bool (*predicate)(Node *));
+Node *get_first_child(Node *parent);
+Node *get_last_child(Node *parent);
+Node *get_next_sibling(Node *node);
+Node *get_prev_sibling(Node *node);
+Node *get_parent(Node *node);
+Node *get_child_at(Node *parent, size_t index);
+Node *get_first_child_by_index(Node *parent, size_t index); // alias for get_child_at
+size_t get_child_count(Node *parent);
+bool has_children(Node *parent);
+bool is_leaf(Node *node);
+bool is_first_child(Node *node);
+bool is_last_child(Node *node);
+Node *get_root(Node *node);
+Node *get_nth_sibling(Node *node, int offset); // offset can be positive (next) or negative (prev)
 #endif
