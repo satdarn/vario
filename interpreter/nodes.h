@@ -127,10 +127,7 @@ typedef enum {
 
 typedef union {
 	bool visiblity;
-	struct {
-		size_t start;
-		size_t end;
-	} literal;
+	Slice literal;
 	Op op;
 	PrimitiveType primitive_type;
 } NodeData;
