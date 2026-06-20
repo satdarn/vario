@@ -1,0 +1,163 @@
+module example;
+
+enum Direction {
+    North = 0,
+    South,
+    East,
+    West,
+}
+
+union Result {
+    ok: i32,
+    err: i32,
+	count: *Counter,
+}
+
+obj Counter {
+    var count: i32;
+    var step: i32;
+
+    fn init(start: i32, step: i32) -> Counter {
+        var c: Counter;
+        c.count = start;
+        c.step = step;
+        return c;
+    }
+
+    fn deinit(self: *Counter) -> void {
+        return;
+    }
+
+    fn increment(self: *Counter) -> void {
+        self.count = self.count + self.step;
+        return;
+    }
+
+    fn get(self: *Counter) -> i32 {
+        return self.count;
+    }
+
+    fn reset(self: *Counter) -> void {
+        self.count = 0;
+        return;
+    }
+}
+
+fn factorial(n: i32) -> i32 {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+fn max(a: i32, b: i32) -> i32 {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+fn sum_array(arr: []i32) -> i32 {
+    var total: i32 = 0;
+    for value: arr {
+        total = total + value;
+    }
+    return total;
+}
+
+fn fizzbuzz(n: i32) -> void {
+    var i: i32 = 1;
+    while (i <= n) {
+        var fizz: bool = (i % 3) == 0;
+        var buzz: bool = (i % 5) == 0;
+        if (fizz && buzz) {
+            println("FizzBuzz");
+        } else if (fizz) {
+            println("Fizz");
+        } else if (buzz) {
+            println("Buzz");
+        } else {
+            println(i);
+        }
+        i = i + 1;
+    }
+    return;
+}
+
+fn main() -> void {
+    // --- basic arithmetic ---
+    println("=== Arithmetic ===");
+    var x: i32 = 10;
+    var y: i32 = 3;
+    println(x + y);
+    println(x - y);
+    println(x * y);
+    println(x / y);
+    println(x % y);
+
+    // --- counter object ---
+    println("=== Counter ===");
+    var c: Counter = Counter.init(0, 5);
+    c.increment();
+    c.increment();
+    c.increment();
+    println(c.get());
+    c.reset();
+    println(c.get());
+
+    // --- recursion ---
+    println("=== Factorial ===");
+    println(factorial(1));
+    println(factorial(5));
+    println(factorial(10));
+
+    // --- arrays and range-for ---
+    println("=== Arrays ===");
+    var arr: []i32 = [10, 20, 30, 40, 50];
+    println(sum_array(arr));
+    println(arr[2]);
+    var slice: []i32 = arr[1:4];
+    println(sum_array(slice));
+
+    // --- for loop ---
+    println("=== For Loop ===");
+    var sum: i32 = 0;
+    for (var i: i32 = 1; i <= 10; i = i + 1) {
+        sum = sum + i;
+    }
+    println(sum);
+
+    // --- switch ---
+    println("=== Switch ===");
+    var val: i32 = 2;
+    switch (val) {
+        case 1: {
+            println("one");
+        }
+        case 2, 3: {
+            println("two or three");
+        }
+        default: {
+            println("other");
+        }
+    }
+
+    // --- booleans and logic ---
+    println("=== Logic ===");
+    var a: bool = true;
+    var b: bool = false;
+    println(a && b);
+    println(a || b);
+    println(!a);
+
+    // --- fizzbuzz ---
+    println("=== FizzBuzz (1-15) ===");
+    fizzbuzz(15);
+
+    // --- max ---
+    println("=== Max ===");
+    println(max(42, 17));
+    println(max(3, 99));
+
+    return;
+}
