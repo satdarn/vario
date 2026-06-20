@@ -6,44 +6,56 @@ typedef struct {
 	char *data;
 	size_t size;
 	size_t position;
+	size_t line;
+	size_t col;
 } Tokens;
 
 static inline void token_dump(Tokens *tokens) {
 	printf("====================\n\n");
-	printf("%s\n", tokens->data+ tokens->position);
+	printf("%s\n", tokens->data + tokens->position);
 	printf("====================\n\n");
+}
+static inline void advance_one(Tokens *tokens) {
+	if (tokens->position >= tokens->size) return;
+	
+	char c = tokens->data[tokens->position];
+	tokens->position++;
+	
+	if (c == '\n') {
+		tokens->line++;
+		tokens->col = 1; 
+	} else {
+		tokens->col++;
+	}
 }
 
 static inline void skip_whitespace(Tokens *tokens) {
 	while (tokens->position < tokens->size) {
-        char c = tokens->data[tokens->position];
-        if (isspace(c)) {
-            tokens->position++;
-            continue;
-        }
-        if (c == '/' && tokens->position + 1 < tokens->size
-                     && tokens->data[tokens->position + 1] == '/') {
-            tokens->position += 2;
-            while (tokens->position < tokens->size
-                   && tokens->data[tokens->position] != '\n')
-                tokens->position++;
-            continue;
-        }
-        if (c == '/' && tokens->position + 1 < tokens->size
-                     && tokens->data[tokens->position + 1] == '*') {
-            tokens->position += 2;
-            while (tokens->position + 1 < tokens->size) {
-                if (tokens->data[tokens->position]     == '*'
-                 && tokens->data[tokens->position + 1] == '/') {
-                    tokens->position += 2;
-                    break;
-                }
-                tokens->position++;
-            }
-            continue;
-        }
-        break;
-    }
+		char c = tokens->data[tokens->position];
+		if (isspace(c)) {
+			advance_one(tokens);
+			continue;
+		}
+		if (c == '/' && tokens->position + 1 < tokens->size && tokens->data[tokens->position + 1] == '/') {
+			tokens->position += 2;
+			while (tokens->position < tokens->size && tokens->data[tokens->position] != '\n')
+				advance_one(tokens);
+			continue;
+		}
+		if (c == '/' && tokens->position + 1 < tokens->size && tokens->data[tokens->position + 1] == '*') {
+			tokens->position += 2;
+			while (tokens->position + 1 < tokens->size) {
+				if (tokens->data[tokens->position] == '*' && tokens->data[tokens->position + 1] == '/') {
+					advance_one(tokens);
+					advance_one(tokens);
+					break;
+				}
+				tokens->position++;
+			}
+			continue;
+		}
+		break;
+	}
 }
 
 static inline char peek_raw(Tokens *tokens) {
@@ -69,7 +81,7 @@ static inline char consume(Tokens *tokens) {
 static inline bool consume_if(Tokens *tokens, char c) {
 	skip_whitespace(tokens);
 	if (peek(tokens) == c) {
-		consume(tokens);
+		consume_raw(tokens);
 		return true;
 	}
 	return false;
@@ -87,7 +99,9 @@ static inline bool peek_string(Tokens *tokens, char *s) {
 static inline void consume_string(Tokens *tokens, char *s) {
 	skip_whitespace(tokens);
 	int len = strlen(s);
-	tokens->position += len;
+	for(int i = 0;	 i< len; i++){
+		advance_one(tokens);
+	}
 }
 static inline bool peek_keyword(Tokens *tokens, const char *s) {
 	skip_whitespace(tokens);
@@ -101,7 +115,47 @@ static inline bool peek_keyword(Tokens *tokens, const char *s) {
 	char after = (tokens->position + len < tokens->size) ? tokens->data[tokens->position + len] : '\0';
 	return !isalnum(after) && after != '_';
 }
-Node *parse(char* data);
+
+typedef struct {
+    size_t position;
+    size_t line;
+    size_t col;
+} ParserCheckpoint;
+
+static inline ParserCheckpoint parser_save(Tokens *tokens) {
+    ParserCheckpoint cp = {
+        .position = tokens->position,
+        .line = tokens->line,
+        .col = tokens->col
+    };
+    return cp;
+}
+
+static inline void parser_restore(Tokens *tokens, ParserCheckpoint cp) {
+    tokens->position = cp.position;
+    tokens->line = cp.line;
+    tokens->col = cp.col;
+}
+
+static inline Node *create_node_cp(NodeType node_type, char *node_name, ParserCheckpoint cp) {
+    Node *node = create_node(node_type, node_name);
+    if (node) {
+        node->line = cp.line;
+        node->col = cp.col;
+    }
+    return node;
+}
+
+static inline Node *create_node_with_line_col(NodeType node_type, char *node_name, size_t line, size_t col) {
+    Node *node = create_node(node_type, node_name);
+    if (node) {
+        node->line = line;
+        node->col = col;
+    }
+    return node;
+}
+
+Node *parse(char *data);
 Node *parse_program(Tokens *tokens);
 Node *parse_top_level_decl(Tokens *tokens);
 Node *parse_module_decl(Tokens *tokens);
