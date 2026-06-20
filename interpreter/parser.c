@@ -1,5 +1,5 @@
 #include "parser.h"
-#include "nodes.h"
+#include "util.h"
 
 Node *parse(char *data) {
 	Tokens tokens = { 0 };

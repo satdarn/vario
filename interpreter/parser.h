@@ -1,11 +1,6 @@
 #ifndef PARSER_H
 #define PARSER_H
 #include "nodes.h"
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
 
 typedef struct {
 	char *data;
