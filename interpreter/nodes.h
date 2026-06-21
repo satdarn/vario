@@ -144,7 +144,9 @@ typedef struct Node {
 	size_t number_of_children;
 	int line;
 	int col;
-	void *resolved_type;
+	struct Type *resolved_type;
+	struct Symbol *resolved_symbol;
+	struct Scope *scope;
 } Node;
 
 typedef struct {

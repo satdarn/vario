@@ -38,7 +38,7 @@ void append_child(Node *parent, Node *child) {
 }
 
 Node *create_node(NodeType node_type, char *node_name) {
-	Node *node = (Node *)malloc(sizeof(Node));
+	Node *node = (Node *)calloc(1, sizeof(Node));
 	if (node == NULL) {
 		perror("Failed to allocate AST Node");
 		return NULL;
@@ -56,12 +56,12 @@ Node *create_node(NodeType node_type, char *node_name) {
 	node->resolved_type = NULL;
 	memset(&node->data, 0, sizeof(NodeData));
 	if (node_name[0] != '\0') {
-		char *name = (char *)malloc(sizeof(char) * (strlen(node_name)+1));
+		char *name = (char *)malloc(sizeof(char) * (strlen(node_name) + 1));
 		if (name == NULL) {
 			perror("Failed to allocate AST Node Name");
 			return NULL;
 		}
-		strcpy(name,node_name);
+		strcpy(name, node_name);
 		node->name = name;
 	}
 
@@ -236,9 +236,7 @@ Node *get_parent_of_type(Node *node, NodeType type) {
 	return NULL;
 }
 
-bool has_child_of_type(Node *parent, NodeType type) {
-	return get_first_child_of_type(parent, type) != NULL;
-}
+bool has_child_of_type(Node *parent, NodeType type) { return get_first_child_of_type(parent, type) != NULL; }
 
 int count_children_of_type(Node *parent, NodeType type) {
 	if (parent == NULL)

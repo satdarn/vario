@@ -21,6 +21,7 @@ typedef struct {
 } EnumVariant;
 
 typedef struct {
+	char *name;
 	Type *type;
 	uint32_t tag;
 } UnionVariant;
@@ -49,24 +50,25 @@ typedef struct {
 } SliceType;
 
 typedef struct {
-    Type **params;       
-    size_t param_count;
-    Type *return_type;
+	Type **params;
+	size_t param_count;
+	Type *return_type;
 } FunctionType;
 
 typedef enum {
-	prim,
-	obj,
-	_enum,
-	_union,
-	pointer,
-	slice,
-	func,
+	TYPE_PRIM,
+	TYPE_OBJ,
+	TYPE_ENUM,
+	TYPE_UNION,
+	TYPE_POINTER,
+	TYPE_SLICE,
+	TYPE_FUNC,
 } TypeKind;
 
 struct Type {
 	TypeKind kind;
 	char *name;
+	Scope *scope;
 	union {
 		ObjectType obj;
 		EnumType enum_;
@@ -81,20 +83,19 @@ struct Type {
 typedef struct {
 	char *key;
 	Type *value;
-} TypeTable;
+} TypeTableEntry;
+typedef TypeTableEntry *TypeTable;
 
 typedef enum {
-	variable,
-	function
+	SYM_VARIABLE,
+	SYM_CONSTANT,
+	SYM_PARAMETER,
+	SYM_FIELD,
+	SYM_METHOD,
+	SYM_VARIANT,
+	SYM_TYPE,
+	SYM_FUNCTION,
 } SymbolKind;
-
-struct Scope {
-	struct {
-		char *key;
-		Symbol *value;
-	} symbols;
-	Scope *parent;
-};
 
 struct Symbol {
 	SymbolKind kind;
@@ -107,26 +108,46 @@ struct Symbol {
 typedef struct {
 	char *key;
 	Symbol *value;
-} SymbolTable;
+} SymbolTableEntry;
+
+typedef SymbolTableEntry *SymbolTable;
 
 typedef enum {
-	unknown_identifier,
-	unknown_type,
-	duplicate_declaration,
-	invalid_assignment,
-	invalid_field_access,
-	invalid_function_call,
-	missing_return,
-	const_reassignment,
-	let_reassignment,
+	SCOPE_GLOBAL,
+	SCOPE_FUNCTION,
+	SCOPE_BLOCK,
+	SCOPE_OBJECT,
+	SCOPE_ENUM,
+	SCOPE_UNION,
+} ScopeKind;
+
+struct Scope {
+	SymbolTable symbols;
+	struct Scope *parent;
+	Node *node; // owner
+	size_t depth;
+	ScopeKind kind;
+};
+typedef enum {
+	ERR_UNKNOWN_IDENTIFIER,
+	ERR_UNKNOWN_TYPE,
+	ERR_DUPLICATE_DECLARATION,
+	ERR_INVALID_ASSIGNMENT,
+	ERR_INVALID_FIELD_ACCESS,
+	ERR_INVALID_FUNCTION_CALL,
+	ERR_MISSING_RETURN,
+	ERR_CONST_REASSIGNMENT,
+	ERR_LET_REASSIGNMENT,
 } ErrorList;
 
 typedef struct {
 	TypeTable types;
-	ErrorList errors;
+	Scope *global;
+	Scope *current_scope;
+	Node *root;
+	char *source;
 } Sema;
 
 bool analyize(Node *root, char *source);
 
-TypeTable *build_type_table(Node *root);
 #endif
