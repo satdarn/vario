@@ -1,6 +1,6 @@
 # Compiler and compilation flags
 CC      = gcc
-CFLAGS  = -Wall -Wextra -g -Iinterpreter
+CFLAGS  = -Wall -Wextra -g -O0 -Iinterpreter  # -fsanitize=address 
 
 # Output binary name
 TARGET  = bin/vlc
@@ -18,6 +18,11 @@ OBJS    = $(patsubst interpreter/%.c, obj/%.o, $(SRCS))
 
 # Default target: builds the entire interpreter executable
 all: $(TARGET)
+
+
+debug: $(OBJS)
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -fsanitize=address $(OBJS) -o $(TARGET)
 
 # Rule to link the object files into the final executable binary
 $(TARGET): $(OBJS)
