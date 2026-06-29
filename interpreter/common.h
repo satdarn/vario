@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <ctype.h>
+#include <stdarg.h> 
 
 #include "stb_ds.h"
 

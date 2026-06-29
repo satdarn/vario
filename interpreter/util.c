@@ -1,6 +1,6 @@
 #include "util.h"
 
-static const char *node_type_name(NodeType type) {
+const char *node_type_name(NodeType type) {
 	switch (type) {
 	case NODE_PROGRAM:
 		return "PROGRAM";
@@ -282,6 +282,7 @@ void print_node_inline(Node *node, char *source) {
 		printf(" %s", op_name(node->data.op));
 		break;
 	default:
+		//		printf("%s\n", node_type_name(node->type));
 		break;
 	}
 }

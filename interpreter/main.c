@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) {
 
 	Node *parse_tree = parse(source);
 	analyize(parse_tree, source);
+	free_scopes(parse_tree);
 	destroy_node(parse_tree);
 	free(source);
 }

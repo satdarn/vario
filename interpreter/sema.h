@@ -63,6 +63,7 @@ typedef enum {
 	TYPE_POINTER,
 	TYPE_SLICE,
 	TYPE_FUNC,
+	TYPE_NON = 67,
 } TypeKind;
 
 struct Type {
@@ -89,6 +90,7 @@ typedef TypeTableEntry *TypeTable;
 typedef enum {
 	SYM_VARIABLE,
 	SYM_CONSTANT,
+	SYM_SELF_PARAMETER,
 	SYM_PARAMETER,
 	SYM_FIELD,
 	SYM_METHOD,
@@ -149,5 +151,6 @@ typedef struct {
 } Sema;
 
 bool analyize(Node *root, char *source);
+void free_scopes(Node *root);
 
 #endif

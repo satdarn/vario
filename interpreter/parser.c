@@ -2,7 +2,7 @@
 #include "util.h"
 
 Node *parse(char *data) {
-	Tokens tokens = { 0 };
+	Tokens tokens = {0};
 	tokens.line = 1;
 	tokens.col = 0;
 	tokens.data = data;
@@ -1151,6 +1151,7 @@ Node *parse_expression_stmt(Tokens *tokens) {
 	}
 	if (!consume_if(tokens, ';')) {
 		parser_restore(tokens, cp);
+		destroy_node(curr);
 		return NULL;
 	}
 	return curr;
@@ -1651,7 +1652,7 @@ Node *parse_logical_and_expression(Tokens *tokens) {
 	return curr;
 }
 
-//equality_expression = relational_expression { ("==" | "!=") relational_expression } ;
+// equality_expression = relational_expression { ("==" | "!=") relational_expression } ;
 Node *parse_equality_expression(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -1682,7 +1683,7 @@ Node *parse_equality_expression(Tokens *tokens) {
 	return left;
 }
 
-//relational_expression = additive_expression { ("<" | "<=" | ">" | ">=") additive_expression } ;
+// relational_expression = additive_expression { ("<" | "<=" | ">" | ">=") additive_expression } ;
 Node *parse_relational_expression(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -1691,7 +1692,8 @@ Node *parse_relational_expression(Tokens *tokens) {
 		parser_restore(tokens, cp);
 		return NULL;
 	}
-	while (peek_string(tokens, "<") || peek_string(tokens, "<=") || peek_string(tokens, ">") || peek_string(tokens, ">=")) {
+	while (peek_string(tokens, "<") || peek_string(tokens, "<=") || peek_string(tokens, ">") ||
+		   peek_string(tokens, ">=")) {
 		Node *curr = create_node_cp(NODE_RELATIONAL_EXPRESSION, "", cp);
 		if (peek_string(tokens, "<=")) {
 			consume_string(tokens, "<=");
@@ -1719,7 +1721,7 @@ Node *parse_relational_expression(Tokens *tokens) {
 	return left;
 }
 
-//additive_expression = multiplicative_expression { ("+" | "-") multiplicative_expression } ;
+// additive_expression = multiplicative_expression { ("+" | "-") multiplicative_expression } ;
 Node *parse_additive_expression(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -1750,7 +1752,7 @@ Node *parse_additive_expression(Tokens *tokens) {
 	return left;
 }
 
-//multiplicative_expression = unary_expression { ("*" | "/" | "%") unary_expression } ;
+// multiplicative_expression = unary_expression { ("*" | "/" | "%") unary_expression } ;
 Node *parse_multiplicative_expression(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -1784,14 +1786,11 @@ Node *parse_multiplicative_expression(Tokens *tokens) {
 	}
 	return left;
 }
-//unary_expression = ("-" | "!" | "~" | "*" | "&") unary_expression
-//                 | postfix_expression
-//                 ;
+// unary_expression = ("-" | "!" | "~" | "*" | "&") unary_expression
+//                  | postfix_expression
+//                  ;
 Node *parse_unary_expression(Tokens *tokens) {
-	if (peek_string(tokens, "-") ||
-		peek_string(tokens, "!") ||
-		peek_string(tokens, "~") ||
-		peek_string(tokens, "*") ||
+	if (peek_string(tokens, "-") || peek_string(tokens, "!") || peek_string(tokens, "~") || peek_string(tokens, "*") ||
 		peek_string(tokens, "&")) {
 		Node *curr = create_node(NODE_UNARY_EXPRESSION, "");
 		if (peek_string(tokens, "-")) {
@@ -1821,13 +1820,13 @@ Node *parse_unary_expression(Tokens *tokens) {
 	return parse_postfix_expression(tokens);
 }
 
-//postfix_expression = primary_expression
-//                   { "(" argument_list ")"      (* function call *)
-//                   | "." identifier             (* field/method access *)
-//                   | "[" expression "]"         (* indexing *)
-//                   | "[" expression? ":" expression? "]"  (* slicing *)
-//                   | "++" | "--"                (* postfix inc/dec *)
-//                   } ;
+// postfix_expression = primary_expression
+//                    { "(" argument_list ")"      (* function call *)
+//                    | "." identifier             (* field/method access *)
+//                    | "[" expression "]"         (* indexing *)
+//                    | "[" expression? ":" expression? "]"  (* slicing *)
+//                    | "++" | "--"                (* postfix inc/dec *)
+//                    } ;
 Node *parse_postfix_expression(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -1902,12 +1901,12 @@ Node *parse_postfix_expression(Tokens *tokens) {
 	return left;
 }
 
-//primary_expression = literal
-//                   | identifier
-//                   | "(" expression ")"
-//                   | "sizeof" "(" type ")"
-//                   | "(" type ")" expression    (* cast *)
-//                   ;
+// primary_expression = literal
+//                    | identifier
+//                    | "(" expression ")"
+//                    | "sizeof" "(" type ")"
+//                    | "(" type ")" expression    (* cast *)
+//                    ;
 Node *parse_primary_expression(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -1971,7 +1970,7 @@ Node *parse_primary_expression(Tokens *tokens) {
 	return NULL;
 }
 
-//argument_list = [ expression { "," expression } ] ;
+// argument_list = [ expression { "," expression } ] ;
 Node *parse_argument_list(Tokens *tokens) {
 	Node *curr = create_node(NODE_ARGUMENT_LIST, "");
 	Node *expression = parse_expression(tokens);
@@ -1985,12 +1984,12 @@ Node *parse_argument_list(Tokens *tokens) {
 	return curr;
 }
 
-//literal = integer_literal
-//        | float_literal
-//        | string_literal
-//        | boolean_literal
-//        | array_literal
-//        ;
+// literal = integer_literal
+//         | float_literal
+//         | string_literal
+//         | boolean_literal
+//         | array_literal
+//         ;
 Node *parse_literal(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -2016,7 +2015,7 @@ Node *parse_literal(Tokens *tokens) {
 	parser_restore(tokens, cp);
 	return NULL;
 }
-//integer_literal = decimal_literal | hex_literal | octal_literal | binary_literal ;
+// integer_literal = decimal_literal | hex_literal | octal_literal | binary_literal ;
 Node *parse_integer_literal(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -2039,7 +2038,7 @@ Node *parse_integer_literal(Tokens *tokens) {
 	return NULL;
 }
 
-//float_literal = decimal_digits "." decimal_digits [ "e" [ "+" "-" ] decimal_digits ] ;
+// float_literal = decimal_digits "." decimal_digits [ "e" [ "+" "-" ] decimal_digits ] ;
 Node *parse_float_literal(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -2076,7 +2075,7 @@ Node *parse_float_literal(Tokens *tokens) {
 	return curr;
 }
 
-//string_literal = '"' { string_char } '"' ;  (* yields []u8 *)
+// string_literal = '"' { string_char } '"' ;  (* yields []u8 *)
 Node *parse_string_literal(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -2101,7 +2100,7 @@ Node *parse_string_literal(Tokens *tokens) {
 	curr->data.literal.end = tokens->position - 1;
 	return curr;
 }
-//boolean_literal = "true" | "false" ;
+// boolean_literal = "true" | "false" ;
 Node *parse_boolean_literal(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -2145,7 +2144,7 @@ Node *parse_array_literal(Tokens *tokens) {
 	return curr;
 }
 
-//identifier = letter { letter | digit | "_" } ;
+// identifier = letter { letter | digit | "_" } ;
 Node *parse_identifier(Tokens *tokens) {
 	if (!isalpha(peek(tokens))) {
 		return NULL;
@@ -2163,7 +2162,7 @@ Node *parse_identifier(Tokens *tokens) {
 	return curr;
 }
 
-//decimal_literal = decimal_digits ;
+// decimal_literal = decimal_digits ;
 Node *parse_decimal_literal(Tokens *tokens) {
 	skip_whitespace(tokens);
 	ParserCheckpoint cp = parser_save(tokens);
@@ -2176,7 +2175,7 @@ Node *parse_decimal_literal(Tokens *tokens) {
 	return curr;
 }
 
-//hex_literal = "0x" hex_digits ;
+// hex_literal = "0x" hex_digits ;
 Node *parse_hex_literal(Tokens *tokens) {
 	if (!peek_string(tokens, "0x")) {
 		return NULL;
@@ -2194,7 +2193,7 @@ Node *parse_hex_literal(Tokens *tokens) {
 	return curr;
 }
 
-//octal_literal = "0o" octal_digits ;
+// octal_literal = "0o" octal_digits ;
 Node *parse_octal_literal(Tokens *tokens) {
 	if (!peek_string(tokens, "0o")) {
 		return NULL;
@@ -2212,7 +2211,7 @@ Node *parse_octal_literal(Tokens *tokens) {
 	return curr;
 }
 
-//binary_literal = "0b" binary_digits ;
+// binary_literal = "0b" binary_digits ;
 Node *parse_binary_literal(Tokens *tokens) {
 	if (!peek_string(tokens, "0b")) {
 		return NULL;
@@ -2230,7 +2229,7 @@ Node *parse_binary_literal(Tokens *tokens) {
 	return curr;
 }
 
-//decimal_digits = digit { digit } ;
+// decimal_digits = digit { digit } ;
 Node *parse_decimal_digits(Tokens *tokens) {
 	if (!isdigit(peek(tokens))) {
 		return NULL;
