@@ -1,6 +1,6 @@
 #ifndef UTIL_H
 #define UTIL_H
-#include "nodes.h"
+#include "../parse/nodes.h"
 
 void print_ast(Node *node, char *source, int depth, bool last_child);
 

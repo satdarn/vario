@@ -1,58 +1,69 @@
 # Compiler and compilation flags
 CC      = gcc
-CFLAGS  = -Wall -Wextra -g -O0 -Iinterpreter  # -fsanitize=address 
+CFLAGS  = -Wall -Wextra -g -O0 -Iinclude -I.
+LDFLAGS = 
 
 # Output binary name
 TARGET  = bin/vlc
 
-# Source files (add new .c files here if you create them)
-SRCS    = interpreter/main.c \
-          interpreter/common.c \
-          interpreter/parser.c \
-          interpreter/nodes.c \
-          interpreter/util.c \
-          interpreter/sema.c
+# Find all .c files recursively in src/
+SRCS    = $(shell find src -name "*.c" -type f)
 
-# Map source files to object files in the obj/ folder
-OBJS    = $(patsubst interpreter/%.c, obj/%.o, $(SRCS))
+# Generate object file paths in obj/ mirroring src/ structure
+OBJS    = $(patsubst src/%.c, obj/%.o, $(SRCS))
 
-# Default target: builds the entire interpreter executable
+# Generate dependency files
+DEPS    = $(OBJS:.o=.d)
+
+# Default target
 all: $(TARGET)
 
+# Debug build with address sanitizer
+debug: CFLAGS += -fsanitize=address
+debug: LDFLAGS += -fsanitize=address
+debug: $(TARGET)
 
-debug: $(OBJS)
-	@mkdir -p bin
-	$(CC) $(CFLAGS) -fsanitize=address $(OBJS) -o $(TARGET)
-
-# Rule to link the object files into the final executable binary
+# Link
 $(TARGET): $(OBJS)
 	@mkdir -p bin
-	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(TARGET)
 
-# Pattern rule to compile each individual .c source file into a .o object file
-obj/%.o: interpreter/%.c
-	@mkdir -p obj
-	$(CC) $(CFLAGS) -c $< -o $@
+# Compile with dependency generation
+obj/%.o: src/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-# Run the interpreter with a variable file argument (e.g., make run input=new.var)
+# Run
 run: $(TARGET)
 	./$(TARGET) $(input)
 
-# Clean up build artifacts (leaves directories intact)
+# Clean
 clean:
-	rm -f obj/*.o $(TARGET)
+	rm -f $(OBJS) $(DEPS) $(TARGET)
 
-# Completely wipe out built artifacts and clean directories entirely
+# Distclean
 distclean:
 	rm -rf obj/ bin/
 
-# Show helpful targets
+test: $(TARGET)
+	./$(TARGET) test.var var 
+
+context: $(TARGET) 
+	context .
+	echo "./$(TARGET) test.var var" >> context_dump.md
+	./$(TARGET) test.var var &>> context_dump.md
+
+# Help
 help:
 	@echo "Available targets:"
 	@echo "  all         - Build the vlc binary (default)"
-	@echo "  clean       - Remove object files and binary"
+	@echo "  debug       - Build with address sanitizer"
+	@echo "  clean       - Remove object files, deps, and binary"
 	@echo "  distclean   - Remove obj/ and bin/ directories entirely"
 	@echo "  run         - Run the interpreter (usage: make run input=filename)"
 	@echo "  help        - Show this help message"
 
-.PHONY: all clean distclean run help
+# Include dependency files
+-include $(DEPS)
+
+.PHONY: all debug clean distclean run help

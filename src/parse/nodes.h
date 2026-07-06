@@ -1,7 +1,7 @@
 #ifndef NODES_H
 #define NODES_H
 
-#include "common.h"
+#include "../shared/common.h"
 typedef enum {
 	NODE_PROGRAM,
 	NODE_MODULE_DECL,
@@ -69,6 +69,7 @@ typedef enum {
 	NODE_ARGUMENT_LIST,
 	NODE_FLOAT_LITERAL,
 	NODE_STRING_LITERAL,
+	NODE_CHAR_LITERAL,
 	NODE_BOOLEAN_LITERAL,
 	NODE_ARRAY_LITERAL,
 	NODE_IDENTIFER,

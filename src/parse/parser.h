@@ -1,6 +1,6 @@
 #ifndef PARSER_H
 #define PARSER_H
-#include "nodes.h"
+#include "../parse/nodes.h"
 
 typedef struct {
 	char *data;
@@ -224,6 +224,7 @@ Node *parse_literal(Tokens *tokens);
 Node *parse_integer_literal(Tokens *tokens);
 Node *parse_float_literal(Tokens *tokens);
 Node *parse_string_literal(Tokens *tokens);
+Node *parse_char_literal(Tokens *tokens);
 Node *parse_boolean_literal(Tokens *tokens);
 Node *parse_array_literal(Tokens *tokens);
 Node *parse_identifier(Tokens *tokens);
