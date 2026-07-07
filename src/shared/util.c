@@ -263,7 +263,7 @@ void print_node_inline(Node *node, char *source) {
 	case NODE_UNION_TYPE:
 	case NODE_RETURN_TYPE: {
 		size_t len = node->data.literal.end - node->data.literal.start;
-		printf(" \"%.*s\"", (int)len, source + node->data.literal.start);
+		printf(" \"%.*s\"", (int) len, source + node->data.literal.start);
 		break;
 	}
 	case NODE_PRIMITIVE_TYPE:
@@ -309,12 +309,28 @@ void print_ast(Node *node, char *source, int depth, bool last_child) {
 	}
 }
 
-char *slice_string(Slice slice) {
+//drop in replacement for strcmp
+int slice_equals(Slice s1, Slice s2) {
+	int len1 = s1.end - s1.start;
+	int len2 = s2.end - s2.start;
+	int min_len = (len1 < len2) ? len1 : len2;
+
+	for (int i = 0; i < min_len; i++) {
+		char c1 = s1.source[s1.start + i];
+		char c2 = s2.source[s2.start + i];
+		if (c1 != c2) {
+			return c1 - c2;
+		}
+	}
+	return len1 - len2;
+}
+
+char *slice_string(Arena *arena, Slice slice) {
 	if (slice.source == NULL || slice.start > slice.end) {
 		return NULL;
 	}
 	size_t length = slice.end - slice.start;
-	char *result = (char *)malloc(length + 1);
+	char *result = (char *) alloc(arena, length + 1);
 	if (result == NULL) {
 		perror("Failed allocation from source to string");
 		return NULL;

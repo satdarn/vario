@@ -158,12 +158,7 @@ typedef struct {
 } NodeChildIter;
 void destroy_node(Node *node);
 void append_child(Node *parent, Node *child);
-Node *create_node(NodeType node_type, char *node_name);
-NodeChildIter *create_child_iter(Node *parent);
-Node *start_iter(NodeChildIter *iter);
-Node *end_iter(NodeChildIter *iter);
-Node *next_iter(NodeChildIter *iter);
-Node *prev_iter(NodeChildIter *iter);
+Node *create_node(Arena *arena, NodeType node_type, char *node_name);
 Node *get_first_child_of_type(Node *parent, NodeType type);
 Node *get_last_child_of_type(Node *parent, NodeType type);
 Node *get_next_sibling_of_type(Node *node, NodeType type);
@@ -191,5 +186,6 @@ bool is_leaf(Node *node);
 bool is_first_child(Node *node);
 bool is_last_child(Node *node);
 Node *get_root(Node *node);
-Node *get_nth_sibling(Node *node, int offset); // offset can be positive (next) or negative (prev)
+Node *get_nth_sibling(Node *node,
+					  int offset); // offset can be positive (next) or negative (prev)
 #endif

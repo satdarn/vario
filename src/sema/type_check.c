@@ -11,7 +11,8 @@ Type *validate_type(Sema *sema, Node *node) {
 		Node *type_node = get_next_sibling(ident);
 		Node *expr = get_next_sibling(type_node);
 
-		Type *decl_type = resolve_type(sema->types, type_node);
+		Type *decl_type = resolve_type(sema->arena , sema->types, type_node);
+
 		if (!decl_type) {
 			type_error(node, "unknown type in variable declaration");
 			return NULL;
@@ -39,7 +40,7 @@ Type *validate_type(Sema *sema, Node *node) {
 		Node *type_node = get_next_sibling(ident);
 		Node *expr = get_next_sibling(type_node);
 
-		Type *decl_type = resolve_type(sema->types, type_node);
+		Type *decl_type = resolve_type(sema->arena , sema->types, type_node);
 		if (!decl_type) {
 			type_error(node, "unknown type in let declaration");
 			return NULL;
@@ -71,7 +72,7 @@ Type *validate_type(Sema *sema, Node *node) {
 		Node *type_node = get_next_sibling(ident);
 		Node *expr = get_next_sibling(type_node);
 
-		Type *decl_type = resolve_type(sema->types, type_node);
+		Type *decl_type = resolve_type(sema->arena , sema->types, type_node);
 		if (!decl_type) {
 			type_error(node, "unknown type in const declaration");
 			return NULL;
@@ -105,9 +106,9 @@ Type *validate_type(Sema *sema, Node *node) {
 
 		// Check if left is assignable (not a constant)
 		if (left->type == NODE_IDENTIFER) {
-			char *name = slice_string(left->data.literal);
+			char *name = slice_string(sema->arena, left->data.literal);
 			Symbol *sym = lookup_symbol(sema->current_scope, name);
-			free(name);
+			
 			if (sym && sym->kind == SYM_CONSTANT) {
 				type_error(node, "cannot assign to constant '%s'", sym->name);
 				return NULL;
@@ -162,7 +163,7 @@ Type *validate_type(Sema *sema, Node *node) {
 				get_first_child_of_type(func, NODE_RETURN_TYPE);
 			if (return_type_node) {
 				Node *type_node = get_first_child(return_type_node);
-				Type *func_return_type = resolve_type(sema->types, type_node);
+				Type *func_return_type = resolve_type(sema->arena , sema->types, type_node);
 				if (!func_return_type) {
 					type_error(node, "unknown return type in function");
 					return NULL;
@@ -251,17 +252,23 @@ Type *validate_type(Sema *sema, Node *node) {
 		return node->resolved_type;
 	}
 
-	// ============ EXPRESSIONS ============
+		// ============ EXPRESSIONS ============
 	case NODE_IDENTIFER: {
-		char *name = slice_string(node->data.literal);
+		char *name = slice_string(sema->arena, node->data.literal);
 		Symbol *sym = lookup_symbol(sema->current_scope, name);
 		if (!sym) {
-			type_error(node, "undeclared identifier: %s in %p with parent %p",
-					   name, sema->current_scope, sema->current_scope->parent);
-			free(name);
+			// Check if it's a type name
+			Type *type = shget(*sema->types, name);
+			if (type) {
+				
+				node->resolved_type = type;
+				return type;
+			}
+			type_error(node, "undeclared identifier: %s", name);
+			
 			return NULL;
 		}
-		free(name);
+		
 
 		node->resolved_symbol = sym;
 		node->resolved_type = sym->type;
@@ -558,9 +565,9 @@ Type *validate_type(Sema *sema, Node *node) {
 
 		// Also check it's assignable (variable, not constant)
 		if (operand->type == NODE_IDENTIFER) {
-			char *name = slice_string(operand->data.literal);
+			char *name = slice_string(sema->arena, operand->data.literal);
 			Symbol *sym = lookup_symbol(sema->current_scope, name);
-			free(name);
+			
 			if (sym && sym->kind == SYM_CONSTANT) {
 				type_error(node, "cannot increment/decrement constant '%s'",
 						   sym->name);
@@ -575,15 +582,15 @@ Type *validate_type(Sema *sema, Node *node) {
 	case NODE_ACCESS: {
 		Node *obj = get_first_child(node);
 		Node *field = get_next_sibling(obj);
-
+		// We need to check if this obj is an instance identifier or the static
+		// reference
 		Type *obj_type = validate_type(sema, obj);
 		if (!obj_type)
 			return NULL;
 
 		Type *actual_obj_type = obj_type;
-		if (obj_type->kind == TYPE_POINTER) {
+		if (obj_type->kind == TYPE_POINTER)
 			actual_obj_type = obj_type->data.pointer.base;
-		}
 
 		if (actual_obj_type->kind != TYPE_OBJ) {
 			type_error(node, "field access on non-object type '%s'",
@@ -591,12 +598,12 @@ Type *validate_type(Sema *sema, Node *node) {
 			return NULL;
 		}
 
-		char *field_name = slice_string(field->data.literal);
+		char *field_name = slice_string(sema->arena, field->data.literal);
 
 		Scope *obj_scope = actual_obj_type->scope;
 		if (!obj_scope) {
 			type_error(node, "object '%s' has no scope", actual_obj_type->name);
-			free(field_name);
+			
 			return NULL;
 		}
 
@@ -607,7 +614,7 @@ Type *validate_type(Sema *sema, Node *node) {
 					   actual_obj_type->name);
 			return NULL;
 		}
-		free(field_name);
+		
 
 		node->resolved_symbol = field_sym;
 		node->resolved_type = field_sym->type;
@@ -719,7 +726,7 @@ Type *validate_type(Sema *sema, Node *node) {
 		Node *type_node = get_first_child(node);
 		Node *expr = get_next_sibling(type_node);
 
-		Type *target_type = resolve_type(sema->types, type_node);
+		Type *target_type = resolve_type(sema->arena , sema->types, type_node);
 		if (!target_type) {
 			type_error(node, "unknown target type in cast");
 			return NULL;
@@ -743,7 +750,7 @@ Type *validate_type(Sema *sema, Node *node) {
 
 	case NODE_SIZE_OF_EXPRESSION: {
 		Node *type_node = get_first_child(node);
-		Type *type = resolve_type(sema->types, type_node);
+		Type *type = resolve_type(sema->arena , sema->types, type_node);
 		if (!type) {
 			type_error(node, "unknown type in sizeof");
 			return NULL;
@@ -825,9 +832,8 @@ Type *validate_type(Sema *sema, Node *node) {
 			return NULL;
 		}
 		Type *elem_type = range_type->data.slice.element;
-		char *name = slice_string(ident->data.literal);
+		char *name = slice_string(sema->arena, ident->data.literal);
 		Symbol *sym = lookup_symbol(sema->current_scope, name);
-		free(name);
 		if (sym) {
 			if (sym->type == NULL) {
 				sym->type = elem_type; // first time: resolve the placeholder
@@ -880,21 +886,20 @@ Type *validate_type(Sema *sema, Node *node) {
 	}
 }
 
-
 void type_check(Sema *sema) {
-    bool has_errors = false;
-    for (Node *curr = get_first_child(sema->root); curr;
-         curr = get_next_sibling(curr)) {
-        Type *type = validate_type(sema, curr);
-        if (!type) {
-            has_errors = true;
-            print_node_inline(curr, sema->source);
-            printf(" -> ERROR\n");
-        }
-    }
-    if (has_errors) {
-        printf("\nType checking completed with errors.\n");
-    } else {
-        printf("Type checking completed successfully.\n");
-    }
+	bool has_errors = false;
+	for (Node *curr = get_first_child(sema->root); curr;
+		 curr = get_next_sibling(curr)) {
+		Type *type = validate_type(sema, curr);
+		if (!type) {
+			has_errors = true;
+			print_node_inline(curr, sema->source);
+			printf(" -> ERROR\n");
+		}
+	}
+	if (has_errors) {
+		printf("\nType checking completed with errors.\n");
+	} else {
+		printf("Type checking completed successfully.\n");
+	}
 }

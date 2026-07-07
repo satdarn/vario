@@ -20,22 +20,22 @@ int main(int argc, char *argv[]) {
 	fread(source, 1, size, f);
 	source[size] = '\0';
 	fclose(f);
-
-	Node *parse_tree = parse(source);
-	//print_ast(parse_tree, source, 0, false);
-	TypeTable types = build_type_table(parse_tree);
+	
+	Arena main_arena = {0};
+	Node *parse_tree = parse(&main_arena, source);
+	print_ast(parse_tree, source, 0, false);
+	TypeTable types = build_type_table(&main_arena, parse_tree);
 	//print_type_table(types);
 	Sema sema = {0};
 	sema.source = source;
 	sema.root = parse_tree;
 	sema.types = &types;
+	sema.arena = &main_arena;
 	global_symbol_registration(&sema);
 	build_scopes(&sema, parse_tree);
 	type_check(&sema);
 	free_type_table(sema.types);
 	free_scopes(parse_tree);
-	destroy_node(parse_tree);
+	destroy_arena(&main_arena);
 	free(source);
-
-	//return false;
 }

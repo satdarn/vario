@@ -1,7 +1,7 @@
 #include "../sema/sema.h"
 
-Scope *create_scope(Scope *parent, Node *node, ScopeKind kind) {
-	Scope *scope = calloc(1, sizeof(Scope));
+Scope *create_scope(Arena *arena, Scope *parent, Node *node, ScopeKind kind) {
+	Scope *scope = alloc(arena , sizeof(Scope));
 	if (!scope) {
 		perror("create_scope: calloc");
 		return NULL;
@@ -21,9 +21,9 @@ void pop_scope(Sema *sema) {
 		sema->current_scope = sema->current_scope->parent;
 }
 
-Symbol *make_symbol(SymbolKind kind, char *name, Type *type, Node *decl,
+Symbol *make_symbol(Arena *arena, SymbolKind kind, char *name, Type *type, Node *decl,
 					Scope *scope) {
-	Symbol *sym = calloc(1, sizeof(Symbol));
+	Symbol *sym = alloc(arena , sizeof(Symbol));
 	if (!sym) {
 		perror("make_symbol: calloc");
 		return NULL;
@@ -62,7 +62,7 @@ Symbol *lookup_symbol_local(Scope *scope, const char *name) {
 }
 
 void global_symbol_registration(Sema *sema) {
-	Scope *global = create_scope(NULL, sema->root, SCOPE_GLOBAL);
+	Scope *global = create_scope(sema->arena, NULL, sema->root, SCOPE_GLOBAL);
 	if (!global)
 		return;
 
@@ -70,27 +70,26 @@ void global_symbol_registration(Sema *sema) {
 	sema->global = global;
 	sema->current_scope = global;
 
-	for (Node *curr = get_first_child(sema->root); curr;
-		 curr = get_next_sibling(curr)) {
+	for (Node *curr = get_first_child(sema->root); curr; curr = get_next_sibling(curr)) {
 		SymbolKind kind;
 		Type *type = NULL;
 		if (curr->type == NODE_FUNC_DECL) {
 			kind = SYM_FUNCTION;
-			type = resolve_decl_type(sema->types, curr);
+			type = resolve_decl_type(sema->arena, sema->types, curr);
 		} else if (curr->type == NODE_CONST_DECL) {
 			kind = SYM_CONSTANT;
-			type = resolve_decl_type(sema->types, curr);
+			type = resolve_decl_type(sema->arena, sema->types, curr);
 		} else {
 			continue;
 		}
 		Node *ident = get_first_child_of_type(curr, NODE_IDENTIFER);
-		char *name = slice_string(ident->data.literal);
+		char *name = slice_string(sema->arena, ident->data.literal);
 		if (!type) {
 			printf("warning: could not resolve type for '%s'\n", name);
-			free(name);
+			
 			continue;
 		}
-		Symbol *sym = make_symbol(kind, name, type, curr, global);
+		Symbol *sym = make_symbol(sema->arena, kind, name, type, curr, global);
 		if (sym) {
 			curr->resolved_symbol = sym;
 			add_symbol(sema, sym);
@@ -102,15 +101,6 @@ static void free_symbol_table(SymbolTable *table) {
 	if (!table || !*table)
 		return;
 	int len = shlen(*table);
-	for (int i = 0; i < len; i++) {
-		Symbol *sym = (*table)[i].value;
-		if (sym) {
-			if (sym->kind != SYM_SELF_PARAMETER && sym->name) {
-				free(sym->name);
-			}
-			free(sym);
-		}
-	}
 	shfree(*table);
 }
 
@@ -127,55 +117,52 @@ void build_scopes(Sema *sema, Node *node) {
 		return;
 	switch (node->type) {
 	case NODE_OBJ_DECL: {
-		Scope *scope = create_scope(sema->current_scope, node, SCOPE_OBJECT);
+		Scope *scope = create_scope(sema->arena, sema->current_scope, node, SCOPE_OBJECT);
+		Node *ident = get_first_child_of_type(node, NODE_IDENTIFER);
+		char *name = slice_string(sema->arena, ident->data.literal);
+		Type *obj_type = shget(*sema->types, name);
+		obj_type->scope = scope;
 		push_scope(sema, scope);
 		node->scope = scope;
 		break;
 	}
 	case NODE_METHOD_DECL: {
-		Scope *obj_scope =
-			find_nearest_scope_of_kind(sema->current_scope, SCOPE_OBJECT);
-		Scope *func_scope =
-			create_scope(sema->current_scope, node, SCOPE_FUNCTION);
+		Scope *obj_scope = find_nearest_scope_of_kind(sema->current_scope, SCOPE_OBJECT);
+		Scope *func_scope = create_scope(sema->arena, sema->current_scope, node, SCOPE_FUNCTION);
 		push_scope(sema, func_scope);
 		node->scope = func_scope;
 		if (obj_scope) {
 			Node *ident = get_first_child_of_type(node, NODE_IDENTIFER);
-			char *name = slice_string(ident->data.literal);
-			Type *method_type = resolve_decl_type(sema->types, node);
-			Symbol *sym =
-				make_symbol(SYM_METHOD, name, method_type, node, obj_scope);
+			char *name = slice_string(sema->arena, ident->data.literal);
+			Type *method_type = resolve_decl_type(sema->arena, sema->types, node);
+			Symbol *sym = make_symbol(sema->arena, SYM_METHOD, name, method_type, node, obj_scope);
 			node->resolved_symbol = sym;
 			shput(obj_scope->symbols, name, sym);
 		}
 		Node *self_param = get_first_child_of_type(node, NODE_SELF_PARAM);
 		if (self_param) {
 			Node *obj_type = get_first_child(self_param);
-			char *type_name = slice_string(obj_type->data.literal);
+			char *type_name = slice_string(sema->arena, obj_type->data.literal);
 			Type *self_type = shget(*sema->types, type_name);
-			free(type_name);
-			char *ptr_name = malloc(strlen(self_type->name) + 2);
+			char *ptr_name = alloc(sema->arena, strlen(self_type->name) + 2);
 			sprintf(ptr_name, "*%s", self_type->name);
 			Type *ptr_type = shget(*sema->types, ptr_name);
-			free(ptr_name);
 
-			Symbol *sym = make_symbol(SYM_SELF_PARAMETER, "self", ptr_type,
-									  self_param, obj_scope);
+			Symbol *sym =
+				make_symbol(sema->arena, SYM_SELF_PARAMETER, "self", ptr_type, self_param, obj_scope);
 			self_param->resolved_symbol = sym;
 			add_symbol(sema, sym);
 		}
 		break;
 	}
 	case NODE_FUNC_DECL: {
-		Scope *func_scope =
-			create_scope(sema->current_scope, node, SCOPE_FUNCTION);
+		Scope *func_scope = create_scope(sema->arena, sema->current_scope, node, SCOPE_FUNCTION);
 		push_scope(sema, func_scope);
 		node->scope = func_scope;
 		break;
 	}
 	case NODE_BLOCK: {
-		Scope *block_scope =
-			create_scope(sema->current_scope, node, SCOPE_BLOCK);
+		Scope *block_scope = create_scope(sema->arena, sema->current_scope, node, SCOPE_BLOCK);
 		push_scope(sema, block_scope);
 		node->scope = block_scope;
 		break;
@@ -183,12 +170,9 @@ void build_scopes(Sema *sema, Node *node) {
 	case NODE_PARAMETER: {
 		Node *identfier = get_first_child_of_type(node, NODE_IDENTIFER);
 		Node *type_node = get_next_sibling(identfier);
-		Type *type = resolve_type(sema->types, type_node);
-		char *name = slice_string(identfier->data.literal);
-		printf("\nadding an parameter: %s to scope %p\n", name,
-			   sema->current_scope);
-		Symbol *sym =
-			make_symbol(SYM_PARAMETER, name, type, node, sema->current_scope);
+		Type *type = resolve_type(sema->arena , sema->types, type_node);
+		char *name = slice_string(sema->arena, identfier->data.literal);
+		Symbol *sym = make_symbol(sema->arena, SYM_PARAMETER, name, type, node, sema->current_scope);
 		if (sym)
 			add_symbol(sema, sym);
 		break;
@@ -196,9 +180,8 @@ void build_scopes(Sema *sema, Node *node) {
 
 	case NODE_RANGE_FOR_LOOP: {
 		Node *element = get_first_child_of_type(node, NODE_IDENTIFER);
-		char *name = slice_string(element->data.literal);
-		Symbol *sym =
-			make_symbol(SYM_VARIABLE, name, NULL, node, sema->current_scope);
+		char *name = slice_string(sema->arena, element->data.literal);
+		Symbol *sym = make_symbol(sema->arena, SYM_VARIABLE, name, NULL, node, sema->current_scope);
 		element->resolved_symbol = sym;
 		if (sym)
 			add_symbol(sema, sym);
@@ -208,28 +191,23 @@ void build_scopes(Sema *sema, Node *node) {
 	case NODE_LET_DECL: {
 		Node *identfier = get_first_child_of_type(node, NODE_IDENTIFER);
 		Node *type_node = get_next_sibling(identfier);
-		Type *type = resolve_type(sema->types, type_node);
-		char *name = slice_string(identfier->data.literal);
-		printf("\nadding an indentifier: %s to scope %p\n", name,
-			   sema->current_scope);
-		Symbol *sym =
-			make_symbol(SYM_VARIABLE, name, type, node, sema->current_scope);
+		Type *type = resolve_type(sema->arena , sema->types, type_node);
+		char *name = slice_string(sema->arena, identfier->data.literal);
+		Symbol *sym = make_symbol(sema->arena, SYM_VARIABLE, name, type, node, sema->current_scope);
 		node->resolved_symbol = sym;
 		if (sym)
 			add_symbol(sema, sym);
 		break;
 	}
 	case NODE_FIELD_DECL: {
-		Scope *obj_scope =
-			find_nearest_scope_of_kind(sema->current_scope, SCOPE_OBJECT);
+		Scope *obj_scope = find_nearest_scope_of_kind(sema->current_scope, SCOPE_OBJECT);
 		if (obj_scope) {
 			Node *var_decl = get_first_child_of_type(node, NODE_VAR_DECL);
 			Node *ident = get_first_child_of_type(var_decl, NODE_IDENTIFER);
 			Node *type_ann = get_next_sibling(ident);
-			Type *field_type = resolve_type(sema->types, type_ann);
-			char *name = slice_string(ident->data.literal);
-			Symbol *sym =
-				make_symbol(SYM_FIELD, name, field_type, node, obj_scope);
+			Type *field_type = resolve_type(sema->arena , sema->types, type_ann);
+			char *name = slice_string(sema->arena, ident->data.literal);
+			Symbol *sym = make_symbol(sema->arena, SYM_FIELD, name, field_type, node, obj_scope);
 			// Add to object's symbol table, not current scope
 			shput(obj_scope->symbols, name, sym);
 		}
@@ -253,15 +231,13 @@ void build_scopes(Sema *sema, Node *node) {
 void free_scopes(Node *root) {
 	if (!root)
 		return;
-	for (Node *curr = get_first_child(root); curr;
-		 curr = get_next_sibling(curr)) {
+	for (Node *curr = get_first_child(root); curr; curr = get_next_sibling(curr)) {
 		free_scopes(curr);
 	}
 	if (root->scope) {
 		if (root->scope->symbols) {
 			free_symbol_table(&(root->scope->symbols));
 		}
-		free(root->scope);
 		root->scope = NULL;
 	}
 }
@@ -271,8 +247,7 @@ void print_symbol_table(SymbolTable table) {
 	int len = shlen(table);
 	printf("                              SYMBOL TABLE                         "
 		   "             \n");
-	printf("║ %-25s │ %-12s │ %-30s │ %-20s ║\n", "Name", "Kind", "Type",
-		   "Scope");
+	printf("║ %-25s │ %-12s │ %-30s │ %-20s ║\n", "Name", "Kind", "Type", "Scope");
 
 	for (int i = 0; i < len; i++) {
 		Symbol *sym = table[i].value;
@@ -343,9 +318,8 @@ void print_symbol_table(SymbolTable table) {
 			}
 		}
 
-		printf("║ %-25s │ %-12s │ %-30s │ %-20s ║\n",
-			   sym->name ? sym->name : "<unnamed>", kind_str, type_name,
-			   scope_name);
+		printf("║ %-25s │ %-12s │ %-30s │ %-20s ║\n", sym->name ? sym->name : "<unnamed>",
+			   kind_str, type_name, scope_name);
 	}
 	printf("Total symbols: %d\n\n", len);
 }

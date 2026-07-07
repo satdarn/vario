@@ -19,8 +19,8 @@ DEPS    = $(OBJS:.o=.d)
 all: $(TARGET)
 
 # Debug build with address sanitizer
-debug: CFLAGS += -fsanitize=address
-debug: LDFLAGS += -fsanitize=address
+debug: CFLAGS += -fsanitize=address -pg
+debug: LDFLAGS += -fsanitize=address 
 debug: $(TARGET)
 
 # Link

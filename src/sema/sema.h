@@ -68,6 +68,7 @@ typedef struct {
     Scope *global;
     Scope *current_scope;
     Node *root;
+	Arena *arena;
     char *source;
 } Sema;
 

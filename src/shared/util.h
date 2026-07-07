@@ -8,5 +8,5 @@ void print_node_inline(Node *node, char *source);
 
 const char *primitive_name(PrimitiveType pt);
 const char *node_type_name(NodeType type);
-char *slice_string(Slice slice);
+char *slice_string(Arena* arena, Slice slice);
 #endif

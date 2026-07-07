@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 #include "../parse/nodes.h"
+#include "../shared/util.h"
 
 typedef struct {
 	char *data;
@@ -16,14 +17,15 @@ static inline void token_dump(Tokens *tokens) {
 	printf("====================\n\n");
 }
 static inline void advance_one(Tokens *tokens) {
-	if (tokens->position >= tokens->size) return;
-	
+	if (tokens->position >= tokens->size)
+		return;
+
 	char c = tokens->data[tokens->position];
 	tokens->position++;
-	
+
 	if (c == '\n') {
 		tokens->line++;
-		tokens->col = 1; 
+		tokens->col = 1;
 	} else {
 		tokens->col++;
 	}
@@ -36,16 +38,20 @@ static inline void skip_whitespace(Tokens *tokens) {
 			advance_one(tokens);
 			continue;
 		}
-		if (c == '/' && tokens->position + 1 < tokens->size && tokens->data[tokens->position + 1] == '/') {
+		if (c == '/' && tokens->position + 1 < tokens->size &&
+			tokens->data[tokens->position + 1] == '/') {
 			tokens->position += 2;
-			while (tokens->position < tokens->size && tokens->data[tokens->position] != '\n')
+			while (tokens->position < tokens->size &&
+				   tokens->data[tokens->position] != '\n')
 				advance_one(tokens);
 			continue;
 		}
-		if (c == '/' && tokens->position + 1 < tokens->size && tokens->data[tokens->position + 1] == '*') {
+		if (c == '/' && tokens->position + 1 < tokens->size &&
+			tokens->data[tokens->position + 1] == '*') {
 			tokens->position += 2;
 			while (tokens->position + 1 < tokens->size) {
-				if (tokens->data[tokens->position] == '*' && tokens->data[tokens->position + 1] == '/') {
+				if (tokens->data[tokens->position] == '*' &&
+					tokens->data[tokens->position + 1] == '/') {
 					advance_one(tokens);
 					advance_one(tokens);
 					break;
@@ -99,7 +105,7 @@ static inline bool peek_string(Tokens *tokens, char *s) {
 static inline void consume_string(Tokens *tokens, char *s) {
 	skip_whitespace(tokens);
 	int len = strlen(s);
-	for(int i = 0;	 i< len; i++){
+	for (int i = 0; i < len; i++) {
 		advance_one(tokens);
 	}
 }
@@ -112,136 +118,143 @@ static inline bool peek_keyword(Tokens *tokens, const char *s) {
 		if (tokens->data[tokens->position + i] != s[i])
 			return false;
 	}
-	char after = (tokens->position + len < tokens->size) ? tokens->data[tokens->position + len] : '\0';
+	char after = (tokens->position + len < tokens->size)
+					 ? tokens->data[tokens->position + len]
+					 : '\0';
 	return !isalnum(after) && after != '_';
 }
 
 typedef struct {
-    size_t position;
-    size_t line;
-    size_t col;
+	size_t position;
+	size_t line;
+	size_t col;
+	ArenaCheckpoint arena_cp;
 } ParserCheckpoint;
 
-static inline ParserCheckpoint parser_save(Tokens *tokens) {
-    ParserCheckpoint cp = {
-        .position = tokens->position,
-        .line = tokens->line,
-        .col = tokens->col
-    };
-    return cp;
+static inline ParserCheckpoint parser_save(Arena *arena, Tokens *tokens) {
+	ParserCheckpoint cp = {
+		.position = tokens->position,
+		.line = tokens->line,
+		.col = tokens->col,
+		.arena_cp = arena_save(arena),
+	};
+	return cp;
 }
 
-static inline void parser_restore(Tokens *tokens, ParserCheckpoint cp) {
-    tokens->position = cp.position;
-    tokens->line = cp.line;
-    tokens->col = cp.col;
+static inline void parser_restore(Arena *arena, Tokens *tokens, ParserCheckpoint cp) {
+	tokens->position = cp.position;
+	tokens->line = cp.line;
+	tokens->col = cp.col;
+	arena_restore(arena, cp.arena_cp);
 }
 
-static inline Node *create_node_cp(NodeType node_type, char *node_name, ParserCheckpoint cp) {
-    Node *node = create_node(node_type, node_name);
-    if (node) {
-        node->line = cp.line;
-        node->col = cp.col;
-    }
-    return node;
+static inline Node *create_node_cp(Arena *arena, NodeType node_type, char *node_name,
+								   ParserCheckpoint cp) {
+	Node *node = create_node(arena, node_type, node_name);
+	if (node) {
+		node->line = cp.line;
+		node->col = cp.col;
+	}
+	return node;
 }
 
-static inline Node *create_node_with_line_col(NodeType node_type, char *node_name, size_t line, size_t col) {
-    Node *node = create_node(node_type, node_name);
-    if (node) {
-        node->line = line;
-        node->col = col;
-    }
-    return node;
+static inline Node *create_node_with_line_col(Arena *arena, NodeType node_type, char *node_name,
+											  size_t line, size_t col) {
+	Node *node = create_node(arena, node_type, node_name);
+	if (node) {
+		node->line = line;
+		node->col = col;
+	}
+	return node;
 }
 
-Node *parse(char *data);
-Node *parse_program(Tokens *tokens);
-Node *parse_top_level_decl(Tokens *tokens);
-Node *parse_module_decl(Tokens *tokens);
-Node *parse_import_decl(Tokens *tokens);
-Node *parse_visibility(Tokens *tokens);
-Node *parse_func_decl(Tokens *tokens);
-Node *parse_parameter_list(Tokens *tokens);
-Node *parse_parameter(Tokens *tokens);
-Node *parse_return_type(Tokens *tokens);
-Node *parse_block(Tokens *tokens);
-Node *parse_type(Tokens *tokens);
-Node *parse_primitive_type(Tokens *tokens);
-Node *parse_pointer_type(Tokens *tokens);
-Node *parse_slice_type(Tokens *tokens);
-Node *parse_obj_type(Tokens *tokens);
-Node *parse_enum_type(Tokens *tokens);
-Node *parse_union_type(Tokens *tokens);
-Node *parse_obj_decl(Tokens *tokens);
-Node *parse_obj_member(Tokens *tokens);
-Node *parse_field_decl(Tokens *tokens);
-Node *parse_method_decl(Tokens *tokens);
-Node *parse_self_param(Tokens *tokens);
-Node *parse_constructor_decl(Tokens *tokens);
-Node *parse_destructor_decl(Tokens *tokens);
-Node *parse_enum_decl(Tokens *tokens);
-Node *parse_enum_variant(Tokens *tokens);
-Node *parse_union_decl(Tokens *tokens);
-Node *parse_union_variant(Tokens *tokens);
-Node *parse_const_decl(Tokens *tokens);
-Node *parse_var_decl(Tokens *tokens);
-Node *parse_let_decl(Tokens *tokens);
-Node *parse_statement(Tokens *tokens);
-Node *parse_declaration_stmt(Tokens *tokens);
-Node *parse_assignment(Tokens *tokens);
-Node *parse_assignment_stmt(Tokens *tokens);
-Node *parse_assignment_operator(Tokens *tokens);
-Node *parse_expression_stmt(Tokens *tokens);
-Node *parse_return_stmt(Tokens *tokens);
-Node *parse_break_stmt(Tokens *tokens);
-Node *parse_continue_stmt(Tokens *tokens);
-Node *parse_defer_stmt(Tokens *tokens);
-Node *parse_block_stmt(Tokens *tokens);
-Node *parse_conditional_stmt(Tokens *tokens);
-Node *parse_loop_stmt(Tokens *tokens);
-Node *parse_while_loop(Tokens *tokens);
-Node *parse_for_loop(Tokens *tokens);
-Node *parse_for_init(Tokens *tokens);
-Node *parse_for_update(Tokens *tokens);
-Node *parse_range_for_loop(Tokens *tokens);
-Node *parse_switch_stmt(Tokens *tokens);
-Node *parse_switch_case(Tokens *tokens);
-Node *parse_case_pattern(Tokens *tokens);
-Node *parse_switch_default(Tokens *tokens);
-Node *parse_expression(Tokens *tokens);
-Node *parse_logical_or_expression(Tokens *tokens);
-Node *parse_logical_and_expression(Tokens *tokens);
-Node *parse_equality_expression(Tokens *tokens);
-Node *parse_relational_expression(Tokens *tokens);
-Node *parse_additive_expression(Tokens *tokens);
-Node *parse_multiplicative_expression(Tokens *tokens);
-Node *parse_unary_expression(Tokens *tokens);
-Node *parse_postfix_expression(Tokens *tokens);
-Node *parse_primary_expression(Tokens *tokens);
-Node *parse_argument_list(Tokens *tokens);
-Node *parse_literal(Tokens *tokens);
-Node *parse_integer_literal(Tokens *tokens);
-Node *parse_float_literal(Tokens *tokens);
-Node *parse_string_literal(Tokens *tokens);
-Node *parse_char_literal(Tokens *tokens);
-Node *parse_boolean_literal(Tokens *tokens);
-Node *parse_array_literal(Tokens *tokens);
-Node *parse_identifier(Tokens *tokens);
-Node *parse_decimal_literal(Tokens *tokens);
-Node *parse_hex_literal(Tokens *tokens);
-Node *parse_octal_literal(Tokens *tokens);
-Node *parse_binary_literal(Tokens *tokens);
-Node *parse_decimal_digits(Tokens *tokens);
-Node *parse_hex_digits(Tokens *tokens);
-Node *parse_octal_digits(Tokens *tokens);
-Node *parse_binary_digits(Tokens *tokens);
-Node *parse_letter(Tokens *tokens);
-Node *parse_digit(Tokens *tokens);
-Node *parse_hex_digit(Tokens *tokens);
-Node *parse_octal_digit(Tokens *tokens);
-Node *parse_binary_digit(Tokens *tokens);
-Node *parse_string_char(Tokens *tokens);
-Node *parse_comment(Tokens *tokens);
-Node *parse_whitespace(Tokens *tokens);
+Node *parse(Arena *arena, char *data);
+Node *parse_program(Arena *arena, Tokens *tokens);
+Node *parse_top_level_decl(Arena *arena, Tokens *tokens);
+Node *parse_module_decl(Arena *arena, Tokens *tokens);
+Node *parse_import_decl(Arena *arena, Tokens *tokens);
+Node *parse_visibility(Arena *arena, Tokens *tokens);
+Node *parse_func_decl(Arena *arena, Tokens *tokens);
+Node *parse_parameter_list(Arena *arena, Tokens *tokens);
+Node *parse_parameter(Arena *arena, Tokens *tokens);
+Node *parse_return_type(Arena *arena, Tokens *tokens);
+Node *parse_block(Arena *arena, Tokens *tokens);
+Node *parse_type(Arena *arena, Tokens *tokens);
+Node *parse_primitive_type(Arena *arena, Tokens *tokens);
+Node *parse_pointer_type(Arena *arena, Tokens *tokens);
+Node *parse_slice_type(Arena *arena, Tokens *tokens);
+Node *parse_obj_type(Arena *arena, Tokens *tokens);
+Node *parse_enum_type(Arena *arena, Tokens *tokens);
+Node *parse_union_type(Arena *arena, Tokens *tokens);
+Node *parse_obj_decl(Arena *arena, Tokens *tokens);
+Node *parse_obj_member(Arena *arena, Tokens *tokens);
+Node *parse_field_decl(Arena *arena, Tokens *tokens);
+Node *parse_method_decl(Arena *arena, Tokens *tokens);
+Node *parse_self_param(Arena *arena, Tokens *tokens);
+Node *parse_constructor_decl(Arena *arena, Tokens *tokens);
+Node *parse_destructor_decl(Arena *arena, Tokens *tokens);
+Node *parse_enum_decl(Arena *arena, Tokens *tokens);
+Node *parse_enum_variant(Arena *arena, Tokens *tokens);
+Node *parse_union_decl(Arena *arena, Tokens *tokens);
+Node *parse_union_variant(Arena *arena, Tokens *tokens);
+Node *parse_const_decl(Arena *arena, Tokens *tokens);
+Node *parse_var_decl(Arena *arena, Tokens *tokens);
+Node *parse_let_decl(Arena *arena, Tokens *tokens);
+Node *parse_statement(Arena *arena, Tokens *tokens);
+Node *parse_declaration_stmt(Arena *arena, Tokens *tokens);
+Node *parse_assignment(Arena *arena, Tokens *tokens);
+Node *parse_assignment_stmt(Arena *arena, Tokens *tokens);
+Node *parse_assignment_operator(Arena *arena, Tokens *tokens);
+Node *parse_expression_stmt(Arena *arena, Tokens *tokens);
+Node *parse_return_stmt(Arena *arena, Tokens *tokens);
+Node *parse_break_stmt(Arena *arena, Tokens *tokens);
+Node *parse_continue_stmt(Arena *arena, Tokens *tokens);
+Node *parse_defer_stmt(Arena *arena, Tokens *tokens);
+Node *parse_block_stmt(Arena *arena, Tokens *tokens);
+Node *parse_conditional_stmt(Arena *arena, Tokens *tokens);
+Node *parse_loop_stmt(Arena *arena, Tokens *tokens);
+Node *parse_while_loop(Arena *arena, Tokens *tokens);
+Node *parse_for_loop(Arena *arena, Tokens *tokens);
+Node *parse_for_init(Arena *arena, Tokens *tokens);
+Node *parse_for_update(Arena *arena, Tokens *tokens);
+Node *parse_range_for_loop(Arena *arena, Tokens *tokens);
+Node *parse_switch_stmt(Arena *arena, Tokens *tokens);
+Node *parse_switch_case(Arena *arena, Tokens *tokens);
+Node *parse_case_pattern(Arena *arena, Tokens *tokens);
+Node *parse_switch_default(Arena *arena, Tokens *tokens);
+Node *parse_expression(Arena *arena, Tokens *tokens);
+Node *parse_logical_or_expression(Arena *arena, Tokens *tokens);
+Node *parse_logical_and_expression(Arena *arena, Tokens *tokens);
+Node *parse_equality_expression(Arena *arena, Tokens *tokens);
+Node *parse_relational_expression(Arena *arena, Tokens *tokens);
+Node *parse_additive_expression(Arena *arena, Tokens *tokens);
+Node *parse_multiplicative_expression(Arena *arena, Tokens *tokens);
+Node *parse_unary_expression(Arena *arena, Tokens *tokens);
+Node *parse_postfix_expression(Arena *arena, Tokens *tokens);
+Node *parse_primary_expression(Arena *arena, Tokens *tokens);
+Node *parse_argument_list(Arena *arena, Tokens *tokens);
+Node *parse_literal(Arena *arena, Tokens *tokens);
+Node *parse_integer_literal(Arena *arena, Tokens *tokens);
+Node *parse_float_literal(Arena *arena, Tokens *tokens);
+Node *parse_string_literal(Arena *arena, Tokens *tokens);
+Node *parse_char_literal(Arena *arena, Tokens *tokens);
+Node *parse_boolean_literal(Arena *arena, Tokens *tokens);
+Node *parse_array_literal(Arena *arena, Tokens *tokens);
+Node *parse_identifier(Arena *arena, Tokens *tokens);
+Node *parse_decimal_literal(Arena *arena, Tokens *tokens);
+Node *parse_hex_literal(Arena *arena, Tokens *tokens);
+Node *parse_octal_literal(Arena *arena, Tokens *tokens);
+Node *parse_binary_literal(Arena *arena, Tokens *tokens);
+Node *parse_decimal_digits(Arena *arena, Tokens *tokens);
+Node *parse_hex_digits(Arena *arena, Tokens *tokens);
+Node *parse_octal_digits(Arena *arena, Tokens *tokens);
+Node *parse_binary_digits(Arena *arena, Tokens *tokens);
+Node *parse_letter(Arena *arena, Tokens *tokens);
+Node *parse_digit(Arena *arena, Tokens *tokens);
+Node *parse_hex_digit(Arena *arena, Tokens *tokens);
+Node *parse_octal_digit(Arena *arena, Tokens *tokens);
+Node *parse_binary_digit(Arena *arena, Tokens *tokens);
+Node *parse_string_char(Arena *arena, Tokens *tokens);
+Node *parse_comment(Arena *arena, Tokens *tokens);
+Node *parse_whitespace(Arena *arena, Tokens *tokens);
 #endif
