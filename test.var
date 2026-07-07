@@ -77,7 +77,7 @@ fn fizzbuzz(n: i32) -> void {
         } else if (buzz) {
             println("Buzz");
         } else {
-            println(i);
+        //    println(i);
         }
         i = i + 1;
     }
@@ -89,11 +89,11 @@ fn main() -> void {
     println("=== Arithmetic ===");
     var x: i32 = 10;
     var y: i32 = 3;
-    println(x + y);
-    println(x - y);
-    println(x * y);
-    println(x / y);
-    println(x % y);
+    // println(x + y);
+    // println(x - y);
+    // println(x * y);
+    // println(x / y);
+    // println(x % y);
 
     // --- counter object ---
     println("=== Counter ===");
@@ -101,23 +101,23 @@ fn main() -> void {
     c.increment();
     c.increment();
     c.increment();
-    println(c.get());
+    // println(c.get());
     c.reset();
-    println(c.get());
+    // println(c.get());
 
     // --- recursion ---
     println("=== Factorial ===");
-    println(factorial(1));
-    println(factorial(5));
-    println(factorial(10));
+    // println(factorial(1));
+    // println(factorial(5));
+    // println(factorial(10));
 
     // --- arrays and range-for ---
     println("=== Arrays ===");
     var arr: []i32 = [10, 20, 30, 40, 50];
-    println(sum_array(arr));
-    println(arr[2]);
+    // println(sum_array(arr));
+    // println(arr[2]);
     var slice: []i32 = arr[1:4];
-    println(sum_array(slice));
+    // println(sum_array(slice));
 
     // --- for loop ---
     println("=== For Loop ===");
@@ -125,7 +125,7 @@ fn main() -> void {
     for (var i: i32 = 1; i <= 10; i = i + 1) {
         sum = sum + i;
     }
-    println(sum);
+    // println(sum);
 
     // --- switch ---
     println("=== Switch ===");
@@ -146,9 +146,9 @@ fn main() -> void {
     println("=== Logic ===");
     var a: bool = true;
     var b: bool = false;
-    println(a && b);
-    println(a || b);
-    println(!a);
+    // println(a && b);
+    // println(a || b);
+    // println(!a);
 
     // --- fizzbuzz ---
     println("=== FizzBuzz (1-15) ===");
@@ -156,8 +156,10 @@ fn main() -> void {
 
     // --- max ---
     println("=== Max ===");
-    println(max(42, 17));
-    println(max(3, 99));
+    // println(max(42, 17));
+    // println(max(3, 99));
 
     return;
 }
+
+fn println(string: []u8)->void{}

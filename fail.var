@@ -1,0 +1,120 @@
+obj Counter {
+    var count: i32;
+    
+    fn init(start: i32) -> Counter {
+        var c: Counter;
+        c.count = start;
+        return c;
+    }
+    
+    fn increment(self: *Counter) -> void {
+        self.count = self.count + 1;
+        return;
+    }
+}
+
+obj Point {
+    var x: i32;
+    var y: i32;
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    return a + b;
+}
+
+fn returns_bool(a: i32) -> bool {
+    return a > 0;
+}
+
+fn void_func() -> void {
+    return;
+}
+
+fn main() -> void {
+    // ERROR 1: Type mismatch in assignment (float to i32)
+    var x: i32 = 3.14;
+    
+    // ERROR 2: Type mismatch - bool expected, i32 given
+    var flag: bool = 42;
+    
+    // ERROR 3: Wrong argument type in function call
+    var sum: i32 = add(10, true);
+    
+    // ERROR 4: Wrong number of arguments
+    var result: i32 = add(5);
+    
+    // ERROR 5: Return type mismatch in function call
+    var bad: i32 = returns_bool(5);  // returns bool, assigned to i32
+    
+    // ERROR 6: Assignment to const (if const is implemented)
+    const MAX: i32 = 100;
+    MAX = 200;
+    
+    // ERROR 7: Field access on non-object
+    var num: i32 = 10;
+    var bad_field: i32 = num.count;
+    
+    // ERROR 8: Arithmetic on non-numeric types (bool + i32)
+    var a: bool = true;
+    var b: i32 = a + 5;
+    
+    // ERROR 9: If condition must be boolean
+    if (42) {
+        var z: i32 = 1;
+    }
+    
+    // ERROR 10: Range for on non-slice
+    var scalar: i32 = 10;
+    for value: scalar {
+        var z: i32 = value;
+    }
+    
+    // ERROR 11: Index must be integer
+    var arr: []i32 = [1, 2, 3];
+    var bad_idx: i32 = arr["hello"];
+    
+    // ERROR 12: Dereference of non-pointer
+    var num2: i32 = 42;
+    var bad_ptr: i32 = *num2;
+    
+    // ERROR 13: Type mismatch in equality comparison
+    if (10 == true) {
+        var z: i32 = 1;
+    }
+    
+    // ERROR 14: Type mismatch in relational comparison
+    if (10 < true) {
+        var z: i32 = 1;
+    }
+    
+    // ERROR 15: Type mismatch in initialization
+    var init_err: i32 = "hello";
+    
+    // ERROR 16: Increment on non-numeric (bool)
+    var flag2: bool = true;
+    flag2++;
+    
+    // ERROR 17: Calling non-function
+    var not_func: i32 = 42;
+    var call_err: i32 = not_func();
+    
+    // ERROR 18: Wrong type in binary operation
+    var mixed: i32 = 10 + "5";
+    
+    // ERROR 19: Field access on wrong object
+    var p: Point;
+    var wrong: i32 = p.z;  // Point has x and y, not z
+    
+    // ERROR 20: Undeclared identifier
+    var undeclared: i32 = unknown_var;
+    
+    // ERROR 21: Type mismatch in assignment to field
+    var c: Counter;
+    c.count = true;  // count expects i32, got bool
+    
+    // ERROR 22: Method call on wrong type
+    var num3: i32 = 10;
+    num3.increment();  // i32 has no increment method
+    
+    return;
+}
