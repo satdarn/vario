@@ -97,14 +97,13 @@ typedef struct {
 	bool at_eof;
 } TokenStream;
 
+
+void lexize(TokenStream *ts);
 Token *ts_peek(TokenStream *ts,
 			   size_t lookahead); // lex more if cursor+lookahead >= arrlen
-Token ts_advance(TokenStream *ts);
+Token *ts_curr(TokenStream *ts);
+Token *ts_advance(TokenStream *ts); // Advances and returns the previous
 size_t ts_mark(TokenStream *ts);			 // just returns cursor
 void ts_reset(TokenStream *ts, size_t mark); // just sets cursor — O(1), no re-lexing
-#define current_char(ts) (*(ts->lex.src + ts->lex.pos))
-#define consume(ts) (ts->lex.pos++, ts->lex.col++, 0 )
-#define line(ts) (ts->lex.line)
-#define col(ts) (ts->lex.col)
-#define pos(ts) (ts->lex.pos)
+void ts_dump(TokenStream *ts);
 #endif
