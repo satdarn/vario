@@ -27,7 +27,7 @@ typedef struct ArenaBlock {
 typedef struct {
 	ArenaBlock **blocks; // stb_ds arraylist
 	ArenaBlock *current;
-	size_t current_index;
+	ptrdiff_t current_index;
 
 } Arena;
 

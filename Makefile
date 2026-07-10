@@ -1,6 +1,6 @@
 # Compiler and compilation flags
 CC      = gcc
-CFLAGS  = -Wall -Wextra -g -O0 -Iinclude -I.
+CFLAGS  = -Wall -Wextra -Wno-sign-compare -g -O0 -Iinclude -I.
 LDFLAGS = 
 
 # Output binary name

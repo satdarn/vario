@@ -100,7 +100,6 @@ void global_symbol_registration(Sema *sema) {
 static void free_symbol_table(SymbolTable *table) {
 	if (!table || !*table)
 		return;
-	int len = shlen(*table);
 	shfree(*table);
 }
 

@@ -10,8 +10,8 @@ void *alloc(Arena *arena, size_t size) {
 		arena->current->pos += aligned;
 		return memset(ptr, 0, aligned);
 	}
-	size_t block_count = arrlen(arena->blocks);
-	size_t next_index = arena->current ? arena->current_index + 1 : 0;
+	int block_count = arrlen(arena->blocks);
+	int next_index = arena->current ? arena->current_index + 1 : 0;
 	if (next_index < block_count && arena->blocks[next_index]->cap >= aligned) {
 		ArenaBlock *block = arena->blocks[next_index];
 		block->pos = aligned;
