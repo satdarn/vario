@@ -59,13 +59,13 @@ typedef enum {
 	TKN_EQEQ = ('=' << 8) + '=',
 	TKN_BANGEQ = ('!' << 8) + '=',
 	TKN_LT = '<',
-	TKN_LTEQ = ('<'<< 8) + '=',
+	TKN_LTEQ = ('<' << 8) + '=',
 	TKN_GT = '>',
-	TKN_GTEQ = ('>'<< 8) + '=',
+	TKN_GTEQ = ('>' << 8) + '=',
 	TKN_AMPAMP = ('&' << 8) + '&',
-	TKN_PIPEPIPE = ('|'<<8) + '|',
+	TKN_PIPEPIPE = ('|' << 8) + '|',
 	TKN_BANG = '!',
-	TKN_PLUSPLUS = ('+'<< 8) + '+',
+	TKN_PLUSPLUS = ('+' << 8) + '+',
 	TKN_ERROR, // lexer-level error token (unterminated string, bad char, etc.)
 } TokenKind;
 
@@ -97,12 +97,12 @@ typedef struct {
 	bool at_eof;
 } TokenStream;
 
-
 void lexize(TokenStream *ts);
-Token *ts_peek(TokenStream *ts,
-			   size_t lookahead); // lex more if cursor+lookahead >= arrlen
+Token *ts_peek(TokenStream *ts); // lex more if cursor+lookahead >= arrlen
+Token *ts_peek_n(TokenStream *ts,
+				 size_t lookahead); // lex more if cursor+lookahead >= arrlen
 Token *ts_curr(TokenStream *ts);
-Token *ts_advance(TokenStream *ts); // Advances and returns the previous
+Token *ts_advance(TokenStream *ts);			 // Advances and returns the previous
 size_t ts_mark(TokenStream *ts);			 // just returns cursor
 void ts_reset(TokenStream *ts, size_t mark); // just sets cursor — O(1), no re-lexing
 void ts_dump(TokenStream *ts);

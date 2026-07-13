@@ -21,20 +21,20 @@ int main(int argc, char *argv[]) {
 	fread(source, 1, size, f);
 	source[size] = '\0';
 	fclose(f);
-	
-	TokenStream ts = {0};	
-	ts.lex.src = source; 
+
+	TokenStream ts = { 0 };
+	ts.lex.src = source;
 	ts.lex.src_len = strlen(source);
-	Arena str_arena = {0};
-	ts.str_arena = &str_arena; 
+	Arena str_arena = { 0 };
+	ts.str_arena = &str_arena;
 	lexize(&ts);
 	ts_dump(&ts);
-	Arena main_arena = {0};
-	Node *parse_tree = parse(&main_arena, source);
+	Arena main_arena = { 0 };
+	Node *parse_tree = parse(&main_arena, &ts);
 	//print_ast(parse_tree, source, 0, false);
 	TypeTable types = build_type_table(&main_arena, parse_tree);
 	//print_type_table(types);
-	Sema sema = {0};
+	Sema sema = { 0 };
 	sema.source = source;
 	sema.root = parse_tree;
 	sema.types = &types;
@@ -46,6 +46,6 @@ int main(int argc, char *argv[]) {
 	free_scopes(parse_tree);
 	destroy_arena(&main_arena);
 	destroy_arena(&str_arena);
-	arrfree(ts.tokens);	
+	arrfree(ts.tokens);
 	free(source);
 }

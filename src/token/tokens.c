@@ -338,12 +338,12 @@ void lexize(TokenStream *ts) {
 	emit_token(ts, TKN_EOF, ts->lex.pos, 0, ts->lex.line, ts->lex.col);
 }
 
-Token *ts_peek(TokenStream *ts, size_t lookahead) {
+Token *ts_peekn(TokenStream *ts, size_t lookahead) {
 	return &(ts->tokens[ts->cursor + lookahead]);
 }
 
-Token *ts_curr(TokenStream *ts) {
-	return ts_peek(ts, 0);
+Token *ts_peek(TokenStream *ts) {
+	return ts_peekn(ts, 0);
 }
 Token *ts_advance(TokenStream *ts) {
 	Token *prev = ts_curr(ts);
