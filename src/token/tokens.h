@@ -4,6 +4,7 @@
 
 typedef enum {
 	TKN_EOF = 0,
+	TKN_DEBUG,
 	// literals
 	TKN_IDENT = 256,
 	TKN_INT_LITERAL,
@@ -29,6 +30,7 @@ typedef enum {
 	TKN_KW_IMPORT,
 	TKN_KW_PUB,
 	TKN_KW_SELF,
+	TKN_KW_SELF_TYPE,
 	TKN_KW_INIT,
 	TKN_KW_DEINIT,
 	TKN_KW_DEFER,
@@ -37,7 +39,20 @@ typedef enum {
 	TKN_KW_DEFAULT,
 	TKN_KW_TRUE,
 	TKN_KW_FALSE,
+	TKN_KW_SIZEOF,
 	TKN_KW_AS,
+	TKN_KW_U8,
+	TKN_KW_U32,
+	TKN_KW_U64,
+	TKN_KW_I32,
+	TKN_KW_I64,
+	TKN_KW_F32,
+	TKN_KW_F64,
+	TKN_KW_BOOL,
+	TKN_KW_VOID,
+	TKN_KW_USIZE,
+	TKN_KW_ISIZE,
+	TKN_KW_INTER,
 	// punctuation / operators as distinct kinds too
 	TKN_LPAREN = '(',
 	TKN_RPAREN = ')',
@@ -55,6 +70,8 @@ typedef enum {
 	TKN_STAR = '*',
 	TKN_SLASH = '/',
 	TKN_PERCENT = '%',
+	TKN_TILDA = '~',
+	TKN_AMP = '&',
 	TKN_EQ = '=',
 	TKN_EQEQ = ('=' << 8) + '=',
 	TKN_BANGEQ = ('!' << 8) + '=',
@@ -66,6 +83,17 @@ typedef enum {
 	TKN_PIPEPIPE = ('|' << 8) + '|',
 	TKN_BANG = '!',
 	TKN_PLUSPLUS = ('+' << 8) + '+',
+	TKN_MINUSMINUS,
+	TKN_PLUSEQ,
+	TKN_MINUSEQ,
+	TKN_STAREQ,
+	TKN_SLASHEQ,
+	TKN_PERCENTEQ,
+	TKN_AMPEQ,
+	TKN_PIPEEQ,
+	TKN_CARROTEQ,
+	TKN_LTLTEQ,
+	TKN_GTGTEQ,
 	TKN_ERROR, // lexer-level error token (unterminated string, bad char, etc.)
 } TokenKind;
 
@@ -100,10 +128,11 @@ typedef struct {
 void lexize(TokenStream *ts);
 Token *ts_peek(TokenStream *ts); // lex more if cursor+lookahead >= arrlen
 Token *ts_peek_n(TokenStream *ts,
-				 size_t lookahead); // lex more if cursor+lookahead >= arrlen
-Token *ts_curr(TokenStream *ts);
+				 size_t lookahead);			 // lex more if cursor+lookahead >= arrlen
 Token *ts_advance(TokenStream *ts);			 // Advances and returns the previous
 size_t ts_mark(TokenStream *ts);			 // just returns cursor
 void ts_reset(TokenStream *ts, size_t mark); // just sets cursor — O(1), no re-lexing
-void ts_dump(TokenStream *ts);
+void ts_dump(TokenStream *ts, size_t i);
+
+void tkn_print(Token tkn, char *source);
 #endif

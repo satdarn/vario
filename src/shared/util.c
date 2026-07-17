@@ -108,6 +108,12 @@ const char *node_type_name(NodeType type) {
 		return "ACCESS";
 	case NODE_INDEX:
 		return "INDEX";
+	case NODE_SLICE_EXPR:
+		return "SLICE";
+	case NODE_SLICE_START:
+		return "SLICE_START";
+	case NODE_SLICE_END:
+		return "SLICE_END";
 	case NODE_INC_DEC:
 		return "INC_DEC";
 	case NODE_CAST_EXPRESSION:
@@ -136,8 +142,36 @@ const char *node_type_name(NodeType type) {
 		return "BOOL";
 	case NODE_ARRAY_LITERAL:
 		return "ARRAY";
-	case NODE_DECIMAL_DIGIT:
-		return "DECIMAL_DIGIT";
+	case NODE_ERROR:
+		return "ERROR";
+	case NODE_SELF_TYPE:
+		return "SELF_TYPE";
+	case NODE_STATEMENT:
+		return "STATEMENT";
+	case NODE_EXPRESSION_STMT:
+		return "EXPRESSION_STMT";
+	case NODE_BLOCK_STMT:
+		return "BLOCK_STMT";
+	case NODE_LOOP_STMT:
+		return "LOOP_STMT";
+	case NODE_CASE_PATTERN:
+		return "CASE_PATTERN";
+	case NODE_EXPRESSION:
+		return "EXPRESSION";
+	case NODE_CHAR_LITERAL:
+		return "CHAR_LITERAL";
+	case NODE_GENERIC_PARAM_LIST:
+		return "GENERIC_PARAM_LIST";
+	case NODE_GENERIC_PARAM:
+		return "GENERIC_PARAM";
+	case NODE_INTER_METHOD_SIG:
+		return "INTER_METHOD_SIG";
+	case NODE_INTER_DECL:
+		return "INTER_DECL";
+	case NODE_BOUND_LIST:
+		return "BOUND_LIST";
+	case NODE_TYPE_ARGS:
+		return "TYPE_ARGS";
 	default:
 		return "UNKNOWN";
 	}
@@ -309,7 +343,7 @@ void print_ast(Node *node, char *source, int depth, bool last_child) {
 	}
 }
 
-//drop in replacement for strcmp
+// drop in replacement for strcmp
 int slice_equals(Slice s1, Slice s2) {
 	int len1 = s1.end - s1.start;
 	int len2 = s2.end - s2.start;

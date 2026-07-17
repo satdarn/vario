@@ -2,8 +2,8 @@
 
 // Helper to match keywords
 static TokenKind keyword_kind(const char *start, size_t len) {
-#define MATCH(s, kind)                                   \
-	if (len == strlen(s) && strncmp(start, s, len) == 0) \
+#define MATCH(s, kind)                                                                   \
+	if (len == strlen(s) && strncmp(start, s, len) == 0)                                 \
 	return kind
 
 	MATCH("fn", TKN_KW_FN);
@@ -24,8 +24,8 @@ static TokenKind keyword_kind(const char *start, size_t len) {
 	MATCH("import", TKN_KW_IMPORT);
 	MATCH("pub", TKN_KW_PUB);
 	MATCH("self", TKN_KW_SELF);
-	MATCH("init", TKN_KW_INIT);
-	MATCH("deinit", TKN_KW_DEINIT);
+	MATCH("Self", TKN_KW_SELF_TYPE);
+	MATCH("inter", TKN_KW_INTER);
 	MATCH("defer", TKN_KW_DEFER);
 	MATCH("switch", TKN_KW_SWITCH);
 	MATCH("case", TKN_KW_CASE);
@@ -33,20 +33,32 @@ static TokenKind keyword_kind(const char *start, size_t len) {
 	MATCH("true", TKN_KW_TRUE);
 	MATCH("false", TKN_KW_FALSE);
 	MATCH("as", TKN_KW_AS);
-
+	MATCH("u8", TKN_KW_U8);
+	MATCH("u32", TKN_KW_U32);
+	MATCH("u64", TKN_KW_U64);
+	MATCH("i32", TKN_KW_I32);
+	MATCH("i64", TKN_KW_I64);
+	MATCH("f32", TKN_KW_F32);
+	MATCH("f64", TKN_KW_F64);
+	MATCH("bool", TKN_KW_BOOL);
+	MATCH("void", TKN_KW_VOID);
+	MATCH("usize", TKN_KW_USIZE);
+	MATCH("isize", TKN_KW_ISIZE);
+	MATCH("sizeof", TKN_KW_SIZEOF);
 #undef MATCH
 	return TKN_IDENT;
 }
 
 // Helper to append a token
-static void emit_token(TokenStream *ts, TokenKind kind, uint32_t offset, uint32_t len, uint32_t line, uint32_t col) {
+static void emit_token(TokenStream *ts, TokenKind kind, uint32_t offset, uint32_t len,
+					   uint32_t line, uint32_t col) {
 	Token t = {
 		.kind = kind,
 		.line = line,
 		.col = col,
 		.offset = offset,
 		.length = len,
-		.value = { 0 },
+		.value = {0},
 	};
 	arrpush(ts->tokens, t);
 }
@@ -133,7 +145,8 @@ void lexize(TokenStream *ts) {
 						   isxdigit(ts->lex.src[ts->lex.pos])) {
 						ts->lex.pos++;
 					}
-					emit_token(ts, TKN_INT_LITERAL, start, ts->lex.pos - start, line, col);
+					emit_token(ts, TKN_INT_LITERAL, start, ts->lex.pos - start, line,
+							   col);
 					continue;
 				}
 				if (next == 'o' || next == 'O') {
@@ -144,7 +157,8 @@ void lexize(TokenStream *ts) {
 						   ts->lex.src[ts->lex.pos] <= '7') {
 						ts->lex.pos++;
 					}
-					emit_token(ts, TKN_INT_LITERAL, start, ts->lex.pos - start, line, col);
+					emit_token(ts, TKN_INT_LITERAL, start, ts->lex.pos - start, line,
+							   col);
 					continue;
 				}
 				if (next == 'b' || next == 'B') {
@@ -155,7 +169,8 @@ void lexize(TokenStream *ts) {
 							ts->lex.src[ts->lex.pos] == '1')) {
 						ts->lex.pos++;
 					}
-					emit_token(ts, TKN_INT_LITERAL, start, ts->lex.pos - start, line, col);
+					emit_token(ts, TKN_INT_LITERAL, start, ts->lex.pos - start, line,
+							   col);
 					continue;
 				}
 			}
@@ -167,15 +182,46 @@ void lexize(TokenStream *ts) {
 
 			// Check for float
 			if (ts->lex.pos < ts->lex.src_len && ts->lex.src[ts->lex.pos] == '.') {
-				ts->lex.pos++;
+				ts->lex.pos++; // consume dot
+
+				// fractional part (must have at least one digit)
+				size_t frac_start = ts->lex.pos;
 				while (ts->lex.pos < ts->lex.src_len &&
 					   isdigit(ts->lex.src[ts->lex.pos])) {
 					ts->lex.pos++;
 				}
+				if (ts->lex.pos == frac_start) {
+					// no digits after dot -> error
+					emit_token(ts, TKN_ERROR, start, ts->lex.pos - start, line, col);
+					continue;
+				}
+
+				// optional exponent
+				if (ts->lex.pos < ts->lex.src_len && (ts->lex.src[ts->lex.pos] == 'e' ||
+													  ts->lex.src[ts->lex.pos] == 'E')) {
+					ts->lex.pos++; // consume 'e'/'E'
+					if (ts->lex.pos < ts->lex.src_len &&
+						(ts->lex.src[ts->lex.pos] == '+' ||
+						 ts->lex.src[ts->lex.pos] == '-')) {
+						ts->lex.pos++; // consume sign
+					}
+					// require at least one digit after exponent
+					if (ts->lex.pos < ts->lex.src_len &&
+						isdigit(ts->lex.src[ts->lex.pos])) {
+						while (ts->lex.pos < ts->lex.src_len &&
+							   isdigit(ts->lex.src[ts->lex.pos])) {
+							ts->lex.pos++;
+						}
+					} else {
+						// malformed exponent -> error
+						emit_token(ts, TKN_ERROR, start, ts->lex.pos - start, line, col);
+						continue;
+					}
+				}
+
 				emit_token(ts, TKN_FLOAT_LITERAL, start, ts->lex.pos - start, line, col);
 				continue;
 			}
-
 			emit_token(ts, TKN_INT_LITERAL, start, ts->lex.pos - start, line, col);
 			continue;
 		}
@@ -224,7 +270,17 @@ void lexize(TokenStream *ts) {
 		// Multi-character punctuation and operators
 		if (ts->lex.pos + 1 < ts->lex.src_len) {
 			char next = ts->lex.src[ts->lex.pos + 1];
-
+			char next_next = ts->lex.src[ts->lex.pos + 2];
+			if (c == '<' && next == '<' && next_next == '=') {
+				emit_token(ts, TKN_LTLTEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 3;
+				continue;
+			}
+			if (c == '>' && next == '>' && next_next == '=') {
+				emit_token(ts, TKN_GTGTEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 3;
+				continue;
+			}
 			// Two-character operators
 			if (c == '-' && next == '>') {
 				emit_token(ts, TKN_ARROW, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
@@ -256,6 +312,21 @@ void lexize(TokenStream *ts) {
 				ts->lex.pos += 2;
 				continue;
 			}
+			if (c == '+' && next == '=') {
+				emit_token(ts, TKN_PLUSEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
+			if (c == '-' && next == '-') {
+				emit_token(ts, TKN_MINUSMINUS, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
+			if (c == '-' && next == '=') {
+				emit_token(ts, TKN_MINUSEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
 			if (c == '<' && next == '=') {
 				emit_token(ts, TKN_LTEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
 				ts->lex.pos += 2;
@@ -266,10 +337,39 @@ void lexize(TokenStream *ts) {
 				ts->lex.pos += 2;
 				continue;
 			}
+			if (c == '*' && next == '=') {
+				emit_token(ts, TKN_STAREQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
+			if (c == '/' && next == '=') {
+				emit_token(ts, TKN_SLASHEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
+			if (c == '%' && next == '=') {
+				emit_token(ts, TKN_PERCENTEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
+			if (c == '&' && next == '=') {
+				emit_token(ts, TKN_AMPEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
+			if (c == '|' && next == '=') {
+				emit_token(ts, TKN_PIPEEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
+			if (c == '^' && next == '=') {
+				emit_token(ts, TKN_CARROTEQ, ts->lex.pos, 2, ts->lex.line, ts->lex.col);
+				ts->lex.pos += 2;
+				continue;
+			}
 		}
-
 		// Single-character tokens
-		if (strchr("(){}[]:;,.-+*/%=", c)) {
+		if (strchr("!(){}[]:;,.-+*/%=&~@<>", c)) {
 			TokenKind kind;
 			switch (c) {
 			case '(':
@@ -320,6 +420,24 @@ void lexize(TokenStream *ts) {
 			case '=':
 				kind = TKN_EQ;
 				break;
+			case '&':
+				kind = TKN_AMP;
+				break;
+			case '~':
+				kind = TKN_TILDA;
+				break;
+			case '@':
+				kind = TKN_DEBUG;
+				break;
+			case '<':
+				kind = TKN_LT;
+				break;
+			case '>':
+				kind = TKN_GT;
+				break;
+			case '!':
+				kind = TKN_BANG;
+				break;
 			default:
 				kind = TKN_ERROR;
 				break;
@@ -338,26 +456,24 @@ void lexize(TokenStream *ts) {
 	emit_token(ts, TKN_EOF, ts->lex.pos, 0, ts->lex.line, ts->lex.col);
 }
 
-Token *ts_peekn(TokenStream *ts, size_t lookahead) {
+Token *ts_peek_n(TokenStream *ts, size_t lookahead) {
+	if ((ts->tokens[ts->cursor + lookahead]).kind == TKN_DEBUG) {
+		ts_dump(ts, ts->cursor);
+		lookahead++;
+	}
 	return &(ts->tokens[ts->cursor + lookahead]);
 }
 
-Token *ts_peek(TokenStream *ts) {
-	return ts_peekn(ts, 0);
-}
+Token *ts_peek(TokenStream *ts) { return ts_peek_n(ts, 0); }
 Token *ts_advance(TokenStream *ts) {
-	Token *prev = ts_curr(ts);
+	Token *prev = ts_peek(ts);
 	ts->cursor++;
 	return prev;
 }
 // just returns cursor
-size_t ts_mark(TokenStream *ts) {
-	return ts->cursor;
-}
+size_t ts_mark(TokenStream *ts) { return ts->cursor; }
 // just sets cursor — O(1), no re-lexing
-void ts_reset(TokenStream *ts, size_t mark) {
-	ts->cursor = mark;
-}
+void ts_reset(TokenStream *ts, size_t mark) { ts->cursor = mark; }
 void tkn_print(Token tkn, char *source) {
 	switch (tkn.kind) {
 	case TKN_EOF: {
@@ -492,6 +608,10 @@ void tkn_print(Token tkn, char *source) {
 		printf("KW_AS: ");
 		break;
 	}
+	case TKN_KW_SELF_TYPE: {
+		printf("KW_SELF_TYPE: ");
+		break;
+	}
 	case TKN_LPAREN: {
 		printf("LPAREN: ");
 		break;
@@ -604,12 +724,118 @@ void tkn_print(Token tkn, char *source) {
 		printf("ERROR: ");
 		break;
 	}
+	case TKN_KW_U8: {
+		printf("KW_U8: ");
+		break;
+	}
+	case TKN_KW_U32: {
+		printf("KW_U32: ");
+		break;
+	}
+	case TKN_KW_U64: {
+		printf("KW_U64: ");
+		break;
+	}
+	case TKN_KW_I32: {
+		printf("KW_I32: ");
+		break;
+	}
+	case TKN_KW_I64: {
+		printf("KW_I64: ");
+		break;
+	}
+	case TKN_KW_F32: {
+		printf("KW_F32: ");
+		break;
+	}
+	case TKN_KW_F64: {
+		printf("KW_F64: ");
+		break;
+	}
+	case TKN_KW_BOOL: {
+		printf("KW_BOOL: ");
+		break;
+	}
+	case TKN_KW_VOID: {
+		printf("KW_VOID: ");
+		break;
+	}
+	case TKN_KW_USIZE: {
+		printf("KW_USIZE: ");
+		break;
+	}
+	case TKN_KW_ISIZE: {
+		printf("KW_ISIZE: ");
+		break;
+	}
+	case TKN_TILDA: {
+		printf("TILDA: ");
+		break;
+	}
+	case TKN_AMP: {
+		printf("AMP: ");
+		break;
+	}
+	case TKN_MINUSMINUS: {
+		printf("MINUSMINUS: ");
+		break;
+	}
+	case TKN_PLUSEQ: {
+		printf("PLUSEQ: ");
+		break;
+	}
+	case TKN_MINUSEQ: {
+		printf("MINUSEQ: ");
+		break;
+	}
+	case TKN_STAREQ: {
+		printf("STAREQ: ");
+		break;
+	}
+	case TKN_SLASHEQ: {
+		printf("SLASHEQ: ");
+		break;
+	}
+	case TKN_PERCENTEQ: {
+		printf("PERCENTEQ: ");
+		break;
+	}
+	case TKN_AMPEQ: {
+		printf("AMPEQ: ");
+		break;
+	}
+	case TKN_PIPEEQ: {
+		printf("PIPEEQ: ");
+		break;
+	}
+	case TKN_CARROTEQ: {
+		printf("CARROTEQ: ");
+		break;
+	}
+	case TKN_LTLTEQ: {
+		printf("LTLTEQ: ");
+		break;
+	}
+	case TKN_GTGTEQ: {
+		printf("GTGTEQ: ");
+		break;
+	}
+	case TKN_KW_SIZEOF: {
+		printf("KW_SIZEOF: ");
+		break;
+	}
+	case TKN_DEBUG: {
+		printf("DEBUG: ");
+		break;
+	}
 	}
 	printf("%.*s, %d:%d\n", tkn.length, tkn.offset + source, tkn.line, tkn.col);
 }
 
-void ts_dump(TokenStream *ts) {
-	for (int i = 0; i < arrlen(ts->tokens); i++) {
-		tkn_print(ts->tokens[i], (char *)ts->lex.src);
+void ts_dump(TokenStream *ts, size_t i) {
+	printf("-------------------------------------\n");
+	for (; i < arrlen(ts->tokens); i++) {
+		tkn_print(ts->tokens[i], (char *) ts->lex.src);
 	}
+	printf("-------------------------------------\n");
 }

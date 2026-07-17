@@ -28,12 +28,22 @@ int main(int argc, char *argv[]) {
 	Arena str_arena = { 0 };
 	ts.str_arena = &str_arena;
 	lexize(&ts);
-	ts_dump(&ts);
-	Arena main_arena = { 0 };
-	Node *parse_tree = parse(&main_arena, &ts);
-	//print_ast(parse_tree, source, 0, false);
+	// ts_dump(&ts, 0);
+	Arena main_arena = {0};
+
+	bool has_parse_error = false;
+	Node *parse_tree = parse(&main_arena, &ts, &has_parse_error);
+	// ts_dump(&ts, 0);
+	print_ast(parse_tree, source, 0, false);
+	if (has_parse_error) {
+		destroy_arena(&main_arena);
+		destroy_arena(&str_arena);
+		arrfree(ts.tokens);
+		free(source);
+		return 1;
+	}
 	TypeTable types = build_type_table(&main_arena, parse_tree);
-	//print_type_table(types);
+	print_type_table(types);
 	Sema sema = { 0 };
 	sema.source = source;
 	sema.root = parse_tree;
