@@ -16,6 +16,7 @@ program = { top_level_decl } ;
 
 top_level_decl = func_decl
                | obj_decl
+               | inter_decl
                | enum_decl
                | union_decl
                | const_decl
@@ -36,11 +37,28 @@ visibility = [ "pub" ] ;
 (* FUNCTIONS                                                     *)
 (* ============================================================ *)
 
-func_decl = visibility "fn" identifier "(" parameter_list ")" return_type block ;
+func_decl = visibility "fn" identifier [ generic_param_list ] "(" parameter_list ")" return_type block ;
 parameter_list = [ parameter { "," parameter } ] ;
 parameter = identifier ":" type ;
 return_type = "->" type ;  (* explicit - void is a type *)
 block = "{" { statement } "}" ;
+
+(* ============================================================ *)
+(* INTERFACES                                                    *)
+(* ============================================================ *)
+
+inter_decl = visibility "inter" identifier "{" { inter_method_sig } "}" ";" ;
+inter_method_sig = "fn" identifier "(" [ self_param [ "," parameter_list ] | parameter_list ] ")" return_type ";" ;
+
+(* ============================================================ *)
+(* GENERICS                                                      *)
+(* ============================================================ *)
+
+generic_param_list = "[" generic_param { "," generic_param } "]" ;
+generic_param = identifier [ ":" bound_list ] ;
+bound_list = identifier { "+" identifier } ;   (* interfaces this type param must implement *)
+
+type_args = "[" type { "," type } "]" ;        (* use-site instantiation, e.g. Vec[i32] *)
 
 (* ============================================================ *)
 (* TYPES                                                         *)
@@ -52,6 +70,7 @@ type = primitive_type
      | obj_type
      | enum_type
      | union_type
+     | self_type
      ;
 
 primitive_type = "u8" | "u32" | "u64" 
@@ -66,15 +85,16 @@ primitive_type = "u8" | "u32" | "u64"
 pointer_type = "*" type ;
 slice_type = "[" [ integer_literal ] "]" type ;  (* []T or [N]T *)
 
-obj_type = identifier ;      (* reference to defined obj *)
+obj_type = identifier [ type_args ] ;      (* reference to defined obj, optionally generic-instantiated *)
 enum_type = identifier ;      (* reference to defined enum *)
 union_type = identifier ;      (* reference to defined union *)
+self_type = "Self" ;      (* placeholder type; only meaningful inside an inter_decl body *)
 
 (* ============================================================ *)
 (* OBJECTS (STRUCTS WITH METHODS)                                *)
 (* ============================================================ *)
 
-obj_decl = visibility "obj" identifier "{" { obj_member } "}" ";" ;
+obj_decl = visibility "obj" identifier [ generic_param_list ] "{" { obj_member } "}" ";" ;
 obj_member = field_decl
            | method_decl
            | constructor_decl
@@ -83,7 +103,7 @@ obj_member = field_decl
 
 field_decl = visibility var_decl ";" ;
 method_decl = visibility "fn" identifier "(" [ self_param "," ]  "," parameter_list ")" return_type block ;
-self_param = "self" ":" "*" obj_type ;  (* self is always a pointer *)
+self_param = "self" ":" "*" ( obj_type | self_type ) ;  (* self is always a pointer *)
 constructor_decl = "fn" "init" "(" parameter_list ")" "->" obj_type block ;
 destructor_decl = "fn" "deinit" "(" "self" ":" "*" obj_type ")" block ;
 
@@ -179,7 +199,9 @@ logical_and_expression = equality_expression { "&&" equality_expression } ;
 equality_expression = relational_expression { ("==" | "!=") relational_expression } ;
 relational_expression = additive_expression { ("<" | "<=" | ">" | ">=") additive_expression } ;
 additive_expression = multiplicative_expression { ("+" | "-") multiplicative_expression } ;
-multiplicative_expression = unary_expression { ("*" | "/" | "%") unary_expression } ;
+multiplicative_expression = cast_expression { ("*" | "/" | "%") cast_expression } ;
+
+cast_expression = unary_expression { "as" type } ;   (* left-associative: (x as i32) as i64 *)
 
 unary_expression = ("-" | "!" | "~" | "*" | "&") unary_expression
                  | postfix_expression
@@ -197,8 +219,7 @@ primary_expression = literal
                    | identifier
                    | "(" expression ")"
                    | "sizeof" "(" type ")"
-                   | "(" type ")" expression    (* cast *)
-                   ;
+                   ;   (* casts are "expression as type", not "(type) expression" — see cast_expression *)
 
 argument_list = [ expression { "," expression } ] ;
 
