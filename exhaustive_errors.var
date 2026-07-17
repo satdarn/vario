@@ -1,0 +1,105 @@
+// ============================================================
+// exhaustive_errors.var
+//
+// Deliberately broken in many INDEPENDENT places, each exercising a
+// different recovery context (TOP_LEVEL_SYNC, BLOCK_SYNC,
+// SWITCH_BODY_SYNC, list-context sync). Each numbered error is
+// self-contained — fixing #3 should not be required to reach #7.
+//
+// Acceptance criteria for the error-recovery work:
+//   - `parse()` must report all ~13 errors below in a single run, not
+//     just the first one.
+//   - had_errors must come back true.
+//   - The VALID functions interspersed between errors (marked "OK")
+//     must still show up correctly in the AST — proof that recovery
+//     actually resumed normal parsing rather than just avoiding a
+//     crash.
+//   - No infinite loop, no crash, regardless of build (debug/ASan).
+// ============================================================
+
+module exhaustive_errors;
+
+// [1] top-level: garbled function header (missing everything after '(')
+fn broken(
+
+// [2] OK — valid decl right after a totally malformed one; proves
+// TOP_LEVEL_SYNC recovery resynced correctly.
+fn recovered_after_1() -> i32 {
+    return 1;
+}
+
+// [3] obj decl missing its name
+obj {
+    var x: i32;
+};
+
+// [4] OK
+obj RecoveredAfter3 {
+    var y: i32;
+};
+
+// [5] enum variant missing the integer literal after '='
+enum BadEnum {
+    A = ,
+    B,
+};
+
+// [6] union variant missing its type
+union BadUnion {
+    field_a: ,
+    field_b: bool,
+};
+
+// [7] generic param list missing ':' before the bound
+fn bad_generic[T Add](x: T) -> T {
+    return x;
+}
+
+// [8] OK — generics still work after #7
+fn good_generic[T: Add](a: T, b: T) -> T {
+    return a.add(b);
+}
+
+// [9] interface method signature missing trailing ';'
+inter BrokenInter {
+    fn go(self: *Self) -> void
+    fn stop(self: *Self) -> void;
+};
+
+// [10] OK
+inter RecoveredInter {
+    fn ping(self: *Self) -> void;
+};
+
+// [11] missing '->' before return type
+fn no_arrow() void {
+    return;
+}
+
+// [12] statement-level: switch case with multiple patterns but no ':'
+fn broken_switch(x: i32) -> i32 {
+    switch x {
+    case 1, 2 3:
+        x = 100;
+    case 4:
+        x = 200;
+    default:
+        x = 300;
+    }
+    return x;
+}
+
+// [13] argument list with a dropped/empty argument between commas
+fn broken_call() -> void {
+    broken_switch(1, , 2);
+}
+
+// [14] OK — final sanity check that the whole rest of the file still
+// parses correctly after 13 independent errors.
+fn final_check(a: i32, b: i32) -> i32 {
+    if a > b {
+        return a;
+    } else {
+        return b;
+    }
+}
